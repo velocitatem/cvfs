@@ -15,12 +15,6 @@ function buildTree(versions: Version[]): TreeNode | null {
     return root;
 }
 
-const STATUS_CLASS: Record<string, string> = {
-    draft: 'badge badge-draft', submitted: 'badge badge-submitted',
-    interviewing: 'badge badge-interviewing', offer: 'badge badge-offer',
-    rejected: 'badge badge-rejected', closed: 'badge badge-closed',
-};
-
 function Node({ node, depth, selectedId, onSelect }: {
     node: TreeNode; depth: number; selectedId: string | null; onSelect: (id: string) => void;
 }) {
