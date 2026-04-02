@@ -12,5 +12,4 @@ yarn-error.log*
 .env*
 .vercel
 *.tsbuildinfo
-next-env.d.ts
 package-lock.json

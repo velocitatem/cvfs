@@ -15,10 +15,17 @@ dependencies = [
   "fastapi",
   "flask",
   "flask-cors",
+  "httpx",
+  "boto3",
   "pydantic",
+  "pydantic-settings",
+  "python-docx",
   "python-dotenv",
   "python-logging-loki",
   "pyyaml",
+  "python-jose[cryptography]",
+  "sqlalchemy[asyncio]",
+  "asyncpg",
   "redis",
   "requests",
   "seleniumbase",
@@ -44,7 +51,7 @@ dev = [
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["alveslib*"]
+include = ["alveslib*", "dlib*"]
 exclude = ["apps*", "ml*", "tests*"]
 
 [tool.uv]

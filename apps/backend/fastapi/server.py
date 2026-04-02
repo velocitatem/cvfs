@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 app = FastAPI()
@@ -15,10 +16,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
 
+
 if __name__ == "__main__":
-    PORT=int(os.getenv("BACKEND_PORT", 5000))
+    PORT = int(os.getenv("BACKEND_PORT", 5000))
     uvicorn.run("server:app", host="0.0.0.0", port=PORT, reload=True)

@@ -11,8 +11,15 @@ python-logging-loki
 fastapi
 flask
 flask-cors
+sqlalchemy[asyncio]
+asyncpg
+httpx
 uvicorn[standard]
 pydantic
+pydantic-settings
+python-jose[cryptography]
+python-docx
+boto3
 
 # Worker (Celery + Redis)
 celery[redis]

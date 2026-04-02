@@ -153,3 +153,14 @@ bun x nx run ml:train
 ## Webapp Auth
 
 Auth is off by default (`NEXT_PUBLIC_REQUIRE_AUTH=false`). Set it to `true` and configure Supabase keys to enable session-based auth gating across all routes.
+
+## Resume Branches MVP
+
+This repo now powers “Resume Branches”, a CV control plane built on the dstack layout.
+
+- **Backend** (`apps/backend/fastapi`): FastAPI API that ingests ATS-safe DOCX files, stores structured blocks, supports branching and submissions, and exposes publish endpoints. Configure MinIO via `MINIO_*` env vars. Build image via `docker/backend-fastapi.Dockerfile`.
+- **Webapp** (`apps/webapp`): Next.js dashboard featuring the CV tree, upload workflow, and publish tooling. It targets the FastAPI host set in `NEXT_PUBLIC_API_BASE_URL` and builds with `docker/webapp.Dockerfile`.
+- **Worker** (`apps/worker`): Celery worker handling heavy DOCX parsing and AI tailoring suggestions using Redis and MinIO.
+- **Docs**: `docs/resume-branches/architecture.md` (system design) and `docs/resume-branches/dokploy.md` (Dokploy API payloads for deploying backend to `api.cv.alves.world` and webapp to `cv.alves.world`).
+
+Local storage uses MinIO via `make lift.minio`; publish-ready artifacts live under the configured bucket.
