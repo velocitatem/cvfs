@@ -19,6 +19,7 @@ pydantic
 pydantic-settings
 python-jose[cryptography]
 python-docx
+python-multipart
 boto3
 
 # Worker (Celery + Redis)
