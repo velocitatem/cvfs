@@ -107,7 +107,7 @@ class Submission(Base, IdentifierMixin, TimestampMixin):
     suggestions: Mapped[list["AiSuggestion"]] = relationship(
         "AiSuggestion", back_populates="submission"
     )
-    public_asset: Mapped["PublicAsset" | None] = relationship(
+    public_asset: Mapped["PublicAsset | None"] = relationship(
         "PublicAsset", back_populates="submission"
     )
 
