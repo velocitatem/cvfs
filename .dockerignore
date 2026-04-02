@@ -5,7 +5,6 @@
 # Node / frontend
 **/node_modules
 apps/webapp/.next
-apps/webapp/bun.lock
 
 # Python
 **/__pycache__
@@ -28,7 +27,4 @@ ml/notebooks/
 FLAT.xml
 
 # Docs / meta
-*.md
-AGENTS.md
-CLAUDE.md
 .github/
