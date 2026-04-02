@@ -12,7 +12,7 @@ services:
       context: ./
       dockerfile: ./docker/webapp.Dockerfile
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=https://api.cv.alves.world
+      - API_BASE_URL=http://cvfs-backend:8080
     networks:
       - dokploy-network
       - cvfs-network
