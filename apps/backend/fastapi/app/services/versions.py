@@ -74,5 +74,11 @@ async def create_branch(
         )
 
     await session.commit()
-    await session.refresh(new_version)
-    return new_version
+
+    stmt_refresh = (
+        select(CvVersion)
+        .where(CvVersion.id == new_version.id)
+        .options(selectinload(CvVersion.patches))
+    )
+    result = await session.execute(stmt_refresh)
+    return result.scalars().one()
