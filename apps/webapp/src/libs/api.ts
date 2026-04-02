@@ -1,4 +1,6 @@
-const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:9812";
+// Empty base: all API calls go to /api/* which Next.js rewrites to the backend.
+// The actual backend URL is set via API_BASE_URL env var in next.config.ts (server-side, runtime).
+const API = "";
 
 export type StructuredBlock = {
     path: string;
@@ -130,4 +132,3 @@ export async function publishVersion(
     });
 }
 
-export { API as API_BASE_URL };
