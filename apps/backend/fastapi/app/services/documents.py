@@ -36,8 +36,15 @@ async def create_document(
 
     session.add(doc)
     await session.commit()
-    await session.refresh(doc, attribute_names=["versions"])
-    return doc
+    await session.refresh(doc)
+
+    stmt = (
+        select(CvDocument)
+        .where(CvDocument.id == doc.id)
+        .options(selectinload(CvDocument.versions).selectinload(CvVersion.patches))
+    )
+    result = await session.execute(stmt)
+    return result.scalars().unique().one()
 
 
 async def list_documents(session: AsyncSession, owner_id: str) -> list[CvDocument]:
