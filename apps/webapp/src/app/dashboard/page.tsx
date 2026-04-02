@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import CVTree from '@/components/cv/CVTree';
 import DiffViewer from '@/components/cv/DiffViewer';
+import Link from 'next/link';
 import {
     createBranch, createSubmission, Document, downloadVersionUrl,
     fetchDocuments, publishVersion, uploadDocument, Version,
@@ -218,9 +219,9 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
             {/* top bar */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 44, borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-                <a href="/" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textDecoration: 'none' }}>
+                <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textDecoration: 'none' }}>
                     Resume Branches
-                </a>
+                </Link>
                 <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setModal('upload')}>
                     + Upload CV
                 </button>
