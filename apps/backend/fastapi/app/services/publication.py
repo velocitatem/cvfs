@@ -24,8 +24,8 @@ async def publish_version(
     if submission_id:
         stmt = (
             select(Submission)
-            .join(CvVersion)
-            .join(CvDocument)
+            .join(CvVersion, Submission.version_id == CvVersion.id)
+            .join(CvDocument, CvVersion.document_id == CvDocument.id)
             .where(Submission.id == submission_id, CvDocument.owner_id == owner_id)
         )
         result = await session.execute(stmt)
@@ -34,7 +34,7 @@ async def publish_version(
     elif version_id:
         stmt = (
             select(CvVersion)
-            .join(CvDocument)
+            .join(CvDocument, CvVersion.document_id == CvDocument.id)
             .where(CvVersion.id == version_id, CvDocument.owner_id == owner_id)
         )
         result = await session.execute(stmt)
