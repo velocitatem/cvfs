@@ -6,8 +6,8 @@ import Footer from "@/components/Footer";
 const fontVariables = "font-sans";
 
 export const metadata: Metadata = {
-    title: "Ultiplate - Ultimate Boilerplate",
-    description: "AI-native template for any project with deployment ready setup",
+    title: "Resume Branches - Git for CVs",
+    description: "Manage your CV like code: branch, version, and tailor for different roles while preserving ATS formatting",
 };
 
 export default function RootLayout({
