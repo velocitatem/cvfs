@@ -26,7 +26,7 @@ async def create_branch(
 ) -> CvVersion | None:
     stmt = (
         select(CvVersion)
-        .join(CvDocument)
+        .join(CvVersion.document)
         .where(CvVersion.id == parent_version_id, CvDocument.owner_id == owner_id)
         .options(selectinload(CvVersion.patches))
     )

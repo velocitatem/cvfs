@@ -89,7 +89,7 @@ async def _get_version_for_owner(
 ) -> CvVersion | None:
     stmt = (
         select(CvVersion)
-        .join(CvDocument)
+        .join(CvVersion.document)
         .where(CvVersion.id == version_id, CvDocument.owner_id == owner_id)
     )
     result = await session.execute(stmt)
@@ -103,8 +103,8 @@ async def _get_submission_for_owner(
 ) -> Submission | None:
     stmt = (
         select(Submission)
-        .join(CvVersion)
-        .join(CvDocument)
+        .join(Submission.version)
+        .join(CvVersion.document)
         .where(Submission.id == submission_id, CvDocument.owner_id == owner_id)
         .options(selectinload(Submission.version))
     )
