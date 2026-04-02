@@ -12,12 +12,13 @@ RUN apt-get update && apt-get install -y \
 # so external deps are downloaded once and reused across source-only rebuilds.
 COPY pyproject.toml ./
 RUN touch README.md \
-    && mkdir -p alveslib && touch alveslib/__init__.py \
+    && mkdir -p alveslib dlib && touch alveslib/__init__.py dlib/__init__.py \
     && pip install --no-cache-dir . \
-    && rm -rf alveslib README.md
+    && rm -rf alveslib dlib README.md
 
 # Copy local library and reinstall it without re-downloading external deps
 COPY alveslib/ ./alveslib/
+COPY dlib/ ./dlib/
 RUN pip install --no-cache-dir --no-deps .
 
 # Copy application source last - most frequently changed
