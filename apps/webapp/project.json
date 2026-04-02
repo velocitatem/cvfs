@@ -1,0 +1,44 @@
+{
+  "name": "webapp",
+  "root": "apps/webapp",
+  "sourceRoot": "apps/webapp/src",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/webapp",
+        "command": "bun run dev"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/webapp",
+        "command": "bun run build"
+      },
+      "outputs": ["{projectRoot}/.next"]
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/webapp",
+        "command": "bun run start"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/webapp",
+        "command": "bun run lint"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/webapp",
+        "command": "bun run typecheck"
+      }
+    }
+  }
+}

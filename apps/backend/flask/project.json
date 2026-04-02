@@ -1,0 +1,40 @@
+{
+  "name": "backend-flask",
+  "root": "apps/backend/flask",
+  "sourceRoot": "apps/backend/flask",
+  "projectType": "application",
+  "implicitDependencies": ["alveslib"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/backend/flask",
+        "command": "python3.12 server.py"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3.12 -m compileall apps/backend/flask"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/ruff check apps/backend/flask"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/mypy apps/backend/flask"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/pytest apps/backend/flask -v"
+      }
+    }
+  }
+}

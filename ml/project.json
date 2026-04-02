@@ -1,0 +1,70 @@
+{
+  "name": "ml",
+  "root": "ml",
+  "sourceRoot": "ml",
+  "projectType": "application",
+  "implicitDependencies": ["alveslib"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "ml",
+        "command": "uvicorn inference:app --host 0.0.0.0 --port 8000 --reload"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv run python -m compileall ml"
+      }
+    },
+    "etl": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/ml/configs/data/**/*.yaml"
+      ],
+      "outputs": ["{workspaceRoot}/ml/data/processed"],
+      "options": {
+        "command": "uv run python -m ml.data.etl --config ml/configs/data/default.yaml --output ml/data/processed"
+      }
+    },
+    "train": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "dependsOn": ["etl"],
+      "inputs": [
+        "default",
+        "{workspaceRoot}/ml/configs/train/**/*.yaml",
+        "{workspaceRoot}/ml/configs/data/**/*.yaml",
+        "{workspaceRoot}/ml/data/processed/**"
+      ],
+      "outputs": [
+        "{workspaceRoot}/ml/models/weights",
+        "{workspaceRoot}/ml/tensorboard"
+      ],
+      "options": {
+        "command": "uv run python -m ml.models.train --config ml/configs/train/default.yaml --dataset ml/data/processed/dataset.pt --weights ml/models/weights/model.pt"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv run ruff check ml"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv run mypy ml"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uv run pytest ml -v"
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+dataset_name: synthetic_classification
+output_dir: ml/data/processed
+train_samples: 2048
+input_dim: 16
+num_classes: 3
+seed: 42

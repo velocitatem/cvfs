@@ -1,0 +1,15 @@
+{
+  "name": "webapp-minimal",
+  "root": "apps/webapp-minimal",
+  "sourceRoot": "apps/webapp-minimal",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/webapp-minimal",
+        "command": "streamlit run app.py"
+      }
+    }
+  }
+}

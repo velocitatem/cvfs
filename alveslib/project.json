@@ -1,0 +1,32 @@
+{
+  "name": "alveslib",
+  "root": "alveslib",
+  "sourceRoot": "alveslib",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3.12 -m compileall alveslib"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/ruff check alveslib"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/mypy alveslib"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/pytest alveslib -v"
+      }
+    }
+  }
+}

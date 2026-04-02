@@ -1,0 +1,8 @@
+{
+  "dataset_name": "synthetic_classification",
+  "train_samples": 2048,
+  "input_dim": 16,
+  "num_classes": 3,
+  "seed": 42,
+  "dataset_path": "ml/data/processed/dataset.pt"
+}

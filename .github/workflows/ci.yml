@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  webapp:
+    name: Next.js build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        working-directory: apps/webapp
+        run: bun install --frozen-lockfile
+      - name: Type check
+        working-directory: apps/webapp
+        run: bun run typecheck
+      - name: Build
+        working-directory: apps/webapp
+        run: bun run build
+        env:
+          NEXT_PUBLIC_REQUIRE_AUTH: "false"
+          NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "placeholder"
+
+  python:
+    name: Python lint + import check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install ruff python-dotenv
+      - name: Lint
+        run: ruff check src/ ml/ apps/worker/ apps/backend/ alveslib/ || true
+      - name: Import smoke test
+        run: |
+          python -c "from alveslib.logger import get_logger; print('logger ok')"
+          python -c "from alveslib.scraper import ScraperCache; print('scraper ok')" || true

@@ -1,0 +1,19 @@
+{
+  "name": "ultiplate",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.2.0",
+  "scripts": {
+    "nx": "nx",
+    "graph": "nx graph",
+    "dev": "nx run webapp:dev",
+    "dev:stack": "nx run-many -t dev --projects=webapp,backend-fastapi,worker,ml --parallel=4",
+    "build": "nx run-many -t build --all",
+    "lint": "nx run-many -t lint --all",
+    "typecheck": "nx run-many -t typecheck --all",
+    "test": "nx run-many -t test --all"
+  },
+  "devDependencies": {
+    "nx": "^20.8.2"
+  }
+}

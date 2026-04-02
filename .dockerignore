@@ -1,0 +1,34 @@
+# Version control
+.git
+.gitignore
+
+# Node / frontend
+**/node_modules
+apps/webapp/.next
+apps/webapp/bun.lock
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.venv
+**/.venv
+*.egg-info
+build/
+dist/
+
+# Dev artifacts
+.env
+**/.env
+**/.scraper_cache
+**/downloaded_files
+logs/
+ml/tensorboard/
+ml/notebooks/
+FLAT.xml
+
+# Docs / meta
+*.md
+AGENTS.md
+CLAUDE.md
+.github/

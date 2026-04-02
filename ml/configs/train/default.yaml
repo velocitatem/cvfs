@@ -1,0 +1,10 @@
+input_dim: 16
+hidden_dim: 64
+num_classes: 3
+learning_rate: 0.001
+batch_size: 64
+epochs: 5
+log_every_n_steps: 20
+seed: 42
+tensorboard_dir: ml/tensorboard
+weights_output: ml/models/weights/model.pt

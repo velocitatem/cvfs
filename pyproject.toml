@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ultiplate"
+version = "0.1.0"
+description = "AI-native full-stack template with web, backend, worker, and ML apps"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "anthropic",
+  "beautifulsoup4",
+  "celery[redis]",
+  "fastapi",
+  "flask",
+  "flask-cors",
+  "pydantic",
+  "python-dotenv",
+  "python-logging-loki",
+  "pyyaml",
+  "redis",
+  "requests",
+  "seleniumbase",
+  "streamlit",
+  "tensorboard",
+  "torch",
+  "tqdm",
+  "uvicorn[standard]",
+]
+
+[project.optional-dependencies]
+mlflow = ["mlflow"]
+
+[dependency-groups]
+dev = [
+  "black",
+  "mypy",
+  "pytest",
+  "ruff",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["alveslib*"]
+exclude = ["apps*", "ml*", "tests*"]
+
+[tool.uv]
+default-groups = ["dev"]

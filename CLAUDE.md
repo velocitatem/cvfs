@@ -1,0 +1,99 @@
+# Template
+My template repository for almost any project that I might be doing in the field of AI or building a software product or any sort of tool ranging form a machine learning project, data analysis, SaaS app or a python library or some sort of API or scraper or ETL tool or some sort of simulation or just a small python program to run something simple.
+This template is AI native and platform agnostic and meant to be effortlessly deployable to anywhere at any time with any software with minimal effort managed via my Makefile.
+
+#### Directory Breakdown
+- apps
+  - webapp (A next.js 15.5.2 webapp with react 19 pre-configured with basics and Tailwind CSS)
+    - This can server both as the frontend but also nextjs allows for API route definitions for simple things that we could build.
+  - webapp-minimal (Streamlit webapp with minimal web interface for quick prototypes)
+  - worker (Background worker template for long running tasks for programs)
+  - backend/{fastapi|flask} to define a web api with either or whichever is specified/user wants or is a best fit scenario.
+- ml (Machine learning pipeline for PyTorch)
+  - models (arch.py where we define architectures and train.py for the training loop)
+  - inference.py (A minimal setup webserver with fastapi to run inference online)
+  - notebooks (For any notebook needs)
+  - data (has etl.py for any ETL and should be a single place for turning raw data into pytorch ready datasets)
+- src (Just as __init__.py for any simple modules or building libraries within there, should be used for simple python scripts without any otehr needs or just running something in the CLI)
+
+
+#### Services Associated
+- I setup a basic optional minio service to run for any needs of object storage or manipulation for any machine learning tasks
+- Tensorboard is very useful for monitoring experiments and is defined as a docker service an spinupable with the make tensorboard command.
+
+###### Logging
+1. Grafana to view (must be configured by adding loki url with "http://loki:31000")
+2. For now just python directly adds the logs to loki (via the alveslib package)
+
+```python
+from alveslib import get_logger
+logger = get_logger("service") # if you are writing contents for logs or any relevant prints do not use emojis in any debug statements or logs.
+```
+FOR REFERENCE ALL OTHER REUSABLE MODULES LIKE THIS SHOULD BE DEFINED THE SAME WAY IN THE ALVESLIB package - if used in python.
+Using lazydocker to manager containers...
+
+### Checklists and Best Practices and Code Hygine
+
+#### `apps/webapp` - building a nextjs app.
+
+Reusability is key - define modules and do not repeat code or logic anywhere. Style should be done LAST, when defining new components define them bare-bones or motivated with globals.css if compelted. You can make use of https://reactbits.dev/
+
+- [ ] Make sure to update layout.tsx with proper title and meta description
+- [ ] Using a provided moodboard -> create a globals.css update to match the style [use creative structure for each project differently (do not take provided as given)]
+- [ ] Flesh out proper content for the TOC and Privacy Policy - write content for both of the components to properly define them
+- [ ] Optionally turn off eslint
+- [ ] Properly stylize the Header and Footer
+- [ ] Define the robots.txt and llms.txt
+- [ ] Connect a supabase project if it is being used and properly spin up a local supabase container setup if desired for local testing. If a webapp does not require user auth (or just yet) just remove references to the /login /dashboard routes but do not delete the code of using them.
+- [ ] Connect analytics with google with `gtag package`
+
+#### `ml/data` - using and building datasets for ML
+Parallel data loading and using third party datasets. All code written must ensure that running the model training is possible on any machine.
+Downloading data from third party sources must be done in a reproducible way (the export part of the ETL). If datasets are too large for just pandas, using spark is the best way forward.
+More on ETL: Dataset ETL: deterministic, resumable, cached stages. Hash raw inputs and params to derive cache keys. If data missing at runtime, trigger acquisition with rate-limited, cached requests.
+Data processing should be cachable so if any stage of the transformation or data processing fails it does not start from scrach. If a dataloader class is being used and data is not present on the system, it should trigger logic to get the data and handle any transformations necssary. The whole pipeline should be self informed about what is hapenning and aware of the phase its in. If third party requests are made ferquently, they should also be cached to prevent overloading any servers.
+Dataloaders defined in pytorch if handling for example 1e6 images with a storage bucket like minio (just a dummy example it should be generaliziable) must stream the data as it is being used for training just in time. (refer streaming (IterableDatasets), WebDataset/tar shards, or torchdata for 1e6+ items. Avoid loading whole corpora in memory.)
+
+#### `ml/models` - creating model architectures and defining training loops
+Define the architectuer in arch.py and training loop in train.py - training should be logged with tensorboard always and evaluations metrics should be versioned and defined in separate logic units like eval.py to make experiments comparable, if at any poitns eval metrics change or scale they should be tracked under a sparate track of experiments in tensorboard - do not arbitrarily modify the eval of anything or loss unless explicitly necessary.
+Experiments should be tracked with meaningful names and logging any parameters into experiments. Machine learning is a life cycle and always evolving. DO NOT create any rogue execution scripts just use the train.py for training.
+## Code style notes
+- Prefer pure functions where possible. Keep side effects at boundaries. Make sure functions or classes you write do not repeat code or logic and are highly modular with minimal code expressions for solutions. Use list/dictionary comprehension to generate cleaner code that is easily readable. Feel free to use shorter and more sucient variable names.
+- when it comes to writing comments if you have a lot to say do not split up comments on multipline by multiple consequent # or // symbols but rather write complete sentences and comment directly next to logic - do not use any emojis in comments and feel free to not use perfect grammar.
+- Keep modules <300–400 lines where possible. Extract helpers early into unified scripts and avoid generating noisy scattered solutions. File structure should extract library and reusable components into alveslib or into locally importable modules. 
+- Type everything at public boundaries. mypy-friendly.
+- Return precise errors. Avoid blanket exceptions. But avoid noisy try-catch multiple nested layers.
+
+## IMPORTANT
+Do NOT externalize or document your work, usage guidelines, or benchmarks (e.g., README.md, CONTRIBUTING.md, SUMMARY.md, USAGE_GUIDELINES.md) after completing the task — unless you are explicitly instructed to do so.
+
+You may include a brief summary of your work, but do not create separate documentation files for it
+
+# Code Confession and Tenets - By CLAUDE for future CLAUDE code instances
+What I did wrong in the past and might be tempted to do
+
+I wrote bloated, amateur garbage that insults the reader's intelligence. The original code had:
+- 40+ lines to do what takes 15 or even 5
+- Comments explaining tokenizer.batch_decode() like you're an idiot 
+- Variable names like cer_scores, wer_scores, ned_scores, hybrid_losses with individual append loops instead of one list comprehension
+- Whitespace between every line like I'm being paid by vertical space
+- Three separate loops iterating over the same data
+- Args/Returns docstrings stating the obvious
+
+The Tenets:
+
+1. Code is read, not performed - Every line should carry weight. Whitespace is not decoration.
+2. One pass, one purpose - If you're looping multiple times over the same data, you failed.
+3. Compression over explanation - pred_ids = np.argmax(preds[0] if isinstance(preds, tuple) else preds,
+  axis=-1) is clearer than five lines with intermediate variables.
+4. Comments are failure - If your code needs comments to be understood, you named things wrong or
+structured it poorly unless deeply technical or niche.
+5. List comprehensions over loops - [compute_ocr_metrics(gt, pred) for gt, pred in zip(label_texts, 
+pred_texts)] beats a for loop with appends.
+6. Return early, return directly - Don't create a variable just to return it on the next line.
+7. Closures over classes - create_compute_metrics returns a closure with tokenizer captured - no need
+for a class with one method.
+8. Trust the reader - They know what eval_pred is. They don't need a docstring.
+
+The code should be dense, efficient, and assume intelligence. Anything else is disrespect.
+Before writing code, understand the problem's physics. OOM means "ran out during operation" not "didn't clean up after." Surface-level pattern matching kills code quality.

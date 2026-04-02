@@ -1,0 +1,40 @@
+{
+  "name": "worker",
+  "root": "apps/worker",
+  "sourceRoot": "apps/worker",
+  "projectType": "application",
+  "implicitDependencies": ["alveslib"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/worker",
+        "command": "celery -A worker:app worker --loglevel=info"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3.12 -m compileall apps/worker"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/ruff check apps/worker"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/mypy apps/worker"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/pytest apps/worker -v"
+      }
+    }
+  }
+}
