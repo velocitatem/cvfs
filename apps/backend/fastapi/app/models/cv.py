@@ -21,7 +21,7 @@ class CvDocument(Base, IdentifierMixin, TimestampMixin):
     )
 
     versions: Mapped[list["CvVersion"]] = relationship(
-        "CvVersion", back_populates="document"
+        "CvVersion", back_populates="document", foreign_keys="[CvVersion.document_id]"
     )
 
 
@@ -41,7 +41,9 @@ class CvVersion(Base, IdentifierMixin, TimestampMixin):
     structured_blocks: Mapped[list[dict] | None] = mapped_column(JSONB, default=list)
     metadata_json: Mapped[dict | None] = mapped_column(JSONB, default=dict)
 
-    document: Mapped[CvDocument] = relationship("CvDocument", back_populates="versions")
+    document: Mapped[CvDocument] = relationship(
+        "CvDocument", back_populates="versions", foreign_keys="[CvVersion.document_id]"
+    )
     parent: Mapped["CvVersion | None"] = relationship(
         "CvVersion", remote_side="[CvVersion.id]"
     )
