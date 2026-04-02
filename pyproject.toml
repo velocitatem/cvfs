@@ -30,8 +30,6 @@ dependencies = [
   "requests",
   "seleniumbase",
   "streamlit",
-  "tensorboard",
-  "torch",
   "tqdm",
   "uvicorn[standard]",
 ]
