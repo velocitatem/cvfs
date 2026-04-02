@@ -37,6 +37,7 @@ services:
       - MINIO_REGION=us-east-1
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - CORS_ORIGINS=https://cv.alves.world
       - PUBLIC_BASE_URL=https://cv.alves.world
       - CV_PUBLIC_DOMAIN=cv.alves.world
       - REDIS_URL=redis://cvfs-redis:6379/0
