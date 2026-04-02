@@ -9,7 +9,7 @@ from app.db.session import lifespan
 
 
 settings = get_settings()
-app = FastAPI(title=settings.project_name, lifespan=lifespan, redirect_slashes=False)
+app = FastAPI(title=settings.project_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
