@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.schemas import DocumentListResponse, DocumentResponse
 from app.services.documents import create_document, get_document, list_documents
+from app.services.storage import storage_client
 from dlib.auth import AuthenticatedUser
 
 
@@ -32,6 +34,28 @@ async def get_user_document(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     return DocumentResponse.model_validate(document)
+
+
+@router.get("/{document_id}/versions/{version_id}/download")
+async def download_version_docx(
+    document_id: str,
+    version_id: str,
+    session: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    document = await get_document(session, owner_id=user.sub, document_id=document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    version = next((v for v in document.versions if v.id == version_id), None)
+    if not version or not version.artifact_docx_key:
+        raise HTTPException(status_code=404, detail="Version artifact not found")
+    data = storage_client.download_bytes(key=version.artifact_docx_key)
+    slug = f"{document.title.replace(' ', '-')}-{version.branch_name}.docx"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{slug}"'},
+    )
 
 
 @router.post("/", response_model=DocumentResponse)
