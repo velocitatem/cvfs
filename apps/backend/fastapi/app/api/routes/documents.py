@@ -14,7 +14,7 @@ from dlib.auth import AuthenticatedUser
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-@router.get("/", response_model=DocumentListResponse)
+@router.get("", response_model=DocumentListResponse)
 async def list_user_documents(
     session: AsyncSession = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
@@ -58,7 +58,7 @@ async def download_version_docx(
     )
 
 
-@router.post("/", response_model=DocumentResponse)
+@router.post("", response_model=DocumentResponse)
 async def upload_document(
     title: str = Form(...),
     description: str | None = Form(default=None),

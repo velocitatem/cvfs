@@ -17,7 +17,7 @@ from dlib.auth import AuthenticatedUser
 router = APIRouter(prefix="/submissions", tags=["submissions"])
 
 
-@router.post("/", response_model=SubmissionResponse)
+@router.post("", response_model=SubmissionResponse)
 async def create_submission_endpoint(
     payload: SubmissionCreateRequest,
     session: AsyncSession = Depends(get_db),
