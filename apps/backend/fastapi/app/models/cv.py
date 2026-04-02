@@ -42,8 +42,8 @@ class CvVersion(Base, IdentifierMixin, TimestampMixin):
     metadata_json: Mapped[dict | None] = mapped_column(JSONB, default=dict)
 
     document: Mapped[CvDocument] = relationship("CvDocument", back_populates="versions")
-    parent: Mapped["CvVersion" | None] = relationship(
-        "CvVersion", remote_side="CvVersion.id"
+    parent: Mapped["CvVersion"] | None = relationship(
+        "CvVersion", remote_side="[CvVersion.id]"
     )
     patches: Mapped[list["CvPatch"]] = relationship("CvPatch", back_populates="version")
     submissions: Mapped[list["Submission"]] = relationship(
