@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation"
 import { useState, ChangeEvent, FormEvent } from "react"
 
-import { API_BASE_URL } from "@/libs/api"
 
 export function UploadResumeCard() {
   const router = useRouter()
@@ -35,7 +34,7 @@ export function UploadResumeCard() {
       formData.append("description", description)
     }
     formData.append("file", file)
-    const response = await fetch(`${API_BASE_URL}/api/v1/documents`, {
+    const response = await fetch(`/api/v1/documents`, {
       method: "POST",
       body: formData,
     })
