@@ -8,6 +8,8 @@ COPY apps/webapp/package.json apps/webapp/bun.lock ./
 RUN bun install --frozen-lockfile
 
 FROM deps AS builder
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:9812
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 COPY apps/webapp ./
 RUN bun run build
 
