@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.schemas import BranchCreateRequest, VersionResponse
-from app.services.versions import create_branch
+from app.services.versions import create_branch, delete_version
 from dlib.auth import AuthenticatedUser
 
 
@@ -29,3 +29,18 @@ async def create_version_branch(
     if not version:
         raise HTTPException(status_code=404, detail="Parent version not found")
     return VersionResponse.model_validate(version)
+
+
+@router.delete("/{version_id}", status_code=204)
+async def delete_version_branch(
+    version_id: str,
+    session: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    result = await delete_version(session, owner_id=user.sub, version_id=version_id)
+    if result is False:
+        raise HTTPException(status_code=404, detail="Version not found")
+    if result == "root":
+        raise HTTPException(status_code=400, detail="Cannot delete root version")
+    if result == "has_children":
+        raise HTTPException(status_code=409, detail="Delete child branches first")

@@ -177,3 +177,25 @@ export async function publishVersion(
         body: JSON.stringify({ version_id: versionId ?? null, submission_id: submissionId ?? null, slug: slug ?? null }),
     });
 }
+
+export async function deleteDocument(documentId: string): Promise<void> {
+    const res = await fetch(`${API}/api/v1/documents/${documentId}`, {
+        method: 'DELETE',
+        headers: { accept: 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) {
+        const detail = await res.text().catch(() => res.statusText);
+        throw new Error(detail || `HTTP ${res.status}`);
+    }
+}
+
+export async function deleteVersion(versionId: string): Promise<void> {
+    const res = await fetch(`${API}/api/v1/versions/${versionId}`, {
+        method: 'DELETE',
+        headers: { accept: 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) {
+        const detail = await res.text().catch(() => res.statusText);
+        throw new Error(detail || `HTTP ${res.status}`);
+    }
+}

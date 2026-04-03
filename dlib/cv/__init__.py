@@ -8,6 +8,7 @@ from .schema import (
 from .parser import parse_docx_bytes, summarize_keywords
 from .patcher import apply_patchset
 from .ats_guard import validate_patchset
+from .docx_export import generate_patched_docx
 
 __all__ = [
     "StructuredBlock",
@@ -19,4 +20,5 @@ __all__ = [
     "summarize_keywords",
     "apply_patchset",
     "validate_patchset",
+    "generate_patched_docx",
 ]

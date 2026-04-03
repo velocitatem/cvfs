@@ -68,3 +68,14 @@ async def get_document(
     )
     result = await session.execute(stmt)
     return result.scalars().unique().one_or_none()
+
+
+async def delete_document(
+    session: AsyncSession, owner_id: str, document_id: str
+) -> bool:
+    doc = await get_document(session, owner_id, document_id)
+    if not doc:
+        return False
+    await session.delete(doc)
+    await session.commit()
+    return True
