@@ -567,7 +567,12 @@ export default function Dashboard() {
     };
 
     const handleDeleteVersion = async (versionId: string) => {
-        if (!confirm('Delete this branch? This cannot be undone.')) return;
+        const version = selectedDoc?.versions.find(v => v.id === versionId);
+        const hasChildren = selectedDoc?.versions.some(v => v.parent_version_id === versionId);
+        const msg = hasChildren
+            ? 'Delete this branch and all its sub-branches? This cannot be undone.'
+            : 'Delete this branch? This cannot be undone.';
+        if (!confirm(msg)) return;
         try {
             await deleteVersion(versionId);
             const fresh = await refreshDocs();
@@ -610,7 +615,7 @@ export default function Dashboard() {
                         ☰
                     </button>
                     <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textDecoration: 'none' }}>
-                        Resume Branches
+                        cvfs
                     </Link>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

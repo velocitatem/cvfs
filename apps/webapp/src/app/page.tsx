@@ -10,10 +10,10 @@ export default function Home() {
                 <section style={{ padding: "80px 24px 64px", textAlign: "center", borderBottom: "1px solid var(--border)" }}>
                     <div style={{ maxWidth: 560, margin: "0 auto" }}>
                         <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 16 }}>
-                            Resume Branches
+                            cvfs
                         </p>
                         <h1 style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1, marginBottom: 16, letterSpacing: "-0.02em" }}>
-                            Git for CVs
+                            CV File System
                         </h1>
                         <p style={{ fontSize: 16, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 32 }}>
                             Upload your ATS-safe DOCX. Branch it by role. Tailor per company without
