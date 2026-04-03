@@ -71,10 +71,11 @@ class OidcTokenValidator:
                 sub="dev-user", email="dev@example.com", name="Developer"
             )
         header = jwt.get_unverified_header(token)
-        key = await self._get_key(header.get("kid"))
+        kid = header.get("kid")
+        alg = header.get("alg") or "RS256"
+        key = await self._get_key(kid)
         if not key:
             raise TokenValidationError("Unable to resolve signing key")
-        alg = header.get("alg") or key.get("alg") or "RS256"
         try:
             claims = jwt.decode(
                 token,
