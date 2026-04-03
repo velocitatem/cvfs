@@ -21,6 +21,15 @@ class TokenValidationError(Exception):
     pass
 
 
+def _normalize_issuer(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = value.strip()
+    normalized = normalized.replace("/application/o/authorize/", "/application/o/")
+    normalized = normalized.replace("/application/o/authorize", "/application/o")
+    return normalized
+
+
 class OidcTokenValidator:
     def __init__(
         self,
@@ -30,12 +39,15 @@ class OidcTokenValidator:
         jwks_url: str | None = None,
         disable: bool = False,
     ) -> None:
-        self.issuer = issuer
+        normalized_issuer = _normalize_issuer(issuer)
+        self.issuer = normalized_issuer
         self.audience = audience
         self.jwks_url = jwks_url or (
-            f"{issuer.rstrip('/')}/.well-known/jwks.json" if issuer else None
+            f"{normalized_issuer.rstrip('/')}/.well-known/jwks.json"
+            if normalized_issuer
+            else None
         )
-        self.disable = disable or not issuer
+        self.disable = disable or not normalized_issuer
         self._jwks: dict[str, Any] | None = None
         self._jwks_expiry: float = 0
 
