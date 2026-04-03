@@ -20,13 +20,14 @@ class TokenValidationError(Exception):
     pass
 
 
-def _normalize_issuer(value: str | None) -> str | None:
+def _normalize_issuer(value: str | None) -> tuple[str | None, str | None]:
     if not value:
-        return None
-    normalized = value.strip().rstrip("/")
-    if normalized.endswith("/application/o/authorize"):
-        normalized = normalized[: -len("/authorize")]
-    return normalized.rstrip("/")
+        return None, None
+    raw = value.strip().rstrip("/")
+    normalized = raw.replace("/application/o/authorize/", "/application/o/")
+    normalized = normalized.replace("/application/o/authorize", "/application/o")
+    normalized = normalized.rstrip("/")
+    return raw, normalized if normalized != raw else raw
 
 
 class OidcTokenValidator:
@@ -38,16 +39,16 @@ class OidcTokenValidator:
         jwks_url: str | None = None,
         disable: bool = False,
     ) -> None:
-        normalized_issuer = _normalize_issuer(issuer)
-        self.issuer = normalized_issuer
+        raw_issuer, discovery_issuer = _normalize_issuer(issuer)
+        self.issuer = raw_issuer
         self.audience = audience
         self.jwks_url = jwks_url
         self.discovery_url = (
-            f"{normalized_issuer.rstrip('/')}/.well-known/openid-configuration"
-            if normalized_issuer
+            f"{(discovery_issuer or raw_issuer).rstrip('/')}/.well-known/openid-configuration"
+            if (discovery_issuer or raw_issuer)
             else None
         )
-        self.disable = disable or not normalized_issuer
+        self.disable = disable or not raw_issuer
         self._jwks: dict[str, Any] | None = None
         self._jwks_expiry: float = 0
 
