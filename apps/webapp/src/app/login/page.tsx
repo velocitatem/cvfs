@@ -52,7 +52,7 @@ export default function LoginPage() {
                 {/* brand */}
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
                     <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>
-                        Resume Branches
+                        cvfs
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                         Sign in to your account
@@ -126,7 +126,7 @@ export default function LoginPage() {
                 </div>
 
                 <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-faint)', marginTop: 20 }}>
-                    Resume Branches — private CV control plane
+                    cvfs — CV File System
                 </p>
             </div>
         </div>

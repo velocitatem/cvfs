@@ -94,7 +94,7 @@ function Node({ node, depth, selectedId, onSelect, onDelete, colorIndex = 0 }: {
                     </span>
                 )}
 
-                {!isRoot && isLeaf && onDelete && hovered && (
+                {!isRoot && onDelete && hovered && (
                     <button
                         onClick={e => { e.stopPropagation(); onDelete(v.id); }}
                         title="Delete branch"
