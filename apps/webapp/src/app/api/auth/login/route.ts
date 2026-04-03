@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'node:crypto';
+import { createHmac } from 'crypto';
 
 const SECRET = process.env.SESSION_SECRET ?? 'dev-secret-change-in-production';
 const LOGIN_USER = process.env.LOGIN_USER ?? 'admin';
 const LOGIN_PASS = process.env.LOGIN_PASS ?? 'admin';
 
 function sign(value: string) {
-    return crypto.createHmac('sha256', SECRET).update(value).digest('hex');
+    return createHmac('sha256', SECRET).update(value).digest('hex');
 }
 
 export async function POST(req: NextRequest) {
