@@ -24,10 +24,10 @@ class TokenValidationError(Exception):
 def _normalize_issuer(value: str | None) -> str | None:
     if not value:
         return None
-    normalized = value.strip()
-    normalized = normalized.replace("/application/o/authorize/", "/application/o/")
-    normalized = normalized.replace("/application/o/authorize", "/application/o")
-    return normalized
+    normalized = value.strip().rstrip("/")
+    normalized = normalized.replace("/application/o/authorize", "")
+    normalized = normalized.rstrip("/")
+    return f"{normalized}/application/o"
 
 
 class OidcTokenValidator:
