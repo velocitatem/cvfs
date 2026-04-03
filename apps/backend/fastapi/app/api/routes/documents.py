@@ -6,9 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.schemas import DocumentListResponse, DocumentResponse
-from app.services.documents import create_document, get_document, list_documents
+from app.services.documents import create_document, delete_document, get_document, list_documents
 from app.services.storage import storage_client
 from dlib.auth import AuthenticatedUser
+from dlib.cv import generate_patched_docx
 
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -49,7 +50,8 @@ async def download_version_docx(
     version = next((v for v in document.versions if v.id == version_id), None)
     if not version or not version.artifact_docx_key:
         raise HTTPException(status_code=404, detail="Version artifact not found")
-    data = storage_client.download_bytes(key=version.artifact_docx_key)
+    original = storage_client.download_bytes(key=version.artifact_docx_key)
+    data = generate_patched_docx(original, version.structured_blocks or [])
     slug = f"{document.title.replace(' ', '-')}-{version.branch_name}.docx"
     return Response(
         content=data,
@@ -74,3 +76,14 @@ async def upload_document(
         upload=file,
     )
     return DocumentResponse.model_validate(document)
+
+
+@router.delete("/{document_id}", status_code=204)
+async def delete_user_document(
+    document_id: str,
+    session: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    deleted = await delete_document(session, owner_id=user.sub, document_id=document_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Document not found")

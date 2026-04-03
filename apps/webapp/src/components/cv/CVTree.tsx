@@ -17,19 +17,22 @@ function buildTree(versions: Version[]): TreeNode | null {
 
 const DOT_COLORS = ['#0a0a0a', '#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
 
-function Node({ node, depth, selectedId, onSelect, colorIndex = 0 }: {
+function Node({ node, depth, selectedId, onSelect, onDelete, colorIndex = 0 }: {
     node: TreeNode; depth: number; selectedId: string | null;
-    onSelect: (id: string) => void; colorIndex?: number;
+    onSelect: (id: string) => void;
+    onDelete?: (id: string) => void;
+    colorIndex?: number;
 }) {
     const [open, setOpen] = useState(true);
+    const [hovered, setHovered] = useState(false);
     const v = node.version;
     const isRoot = !v.parent_version_id;
     const isSelected = v.id === selectedId;
+    const isLeaf = node.children.length === 0;
     const dotColor = DOT_COLORS[colorIndex % DOT_COLORS.length];
 
     return (
         <div style={{ position: 'relative' }}>
-            {/* horizontal connector from parent's vertical line */}
             {depth > 0 && (
                 <div style={{
                     position: 'absolute', left: -1, top: 15,
@@ -39,17 +42,16 @@ function Node({ node, depth, selectedId, onSelect, colorIndex = 0 }: {
 
             <div
                 onClick={() => onSelect(v.id)}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
                 style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    paddingLeft: depth > 0 ? 18 : 8, paddingRight: 8,
+                    paddingLeft: depth > 0 ? 18 : 8, paddingRight: 4,
                     height: 30, cursor: 'pointer', borderRadius: 4, userSelect: 'none',
-                    background: isSelected ? 'var(--selected-bg)' : 'transparent',
+                    background: isSelected ? 'var(--selected-bg)' : hovered ? 'var(--hover)' : 'transparent',
                     borderLeft: isSelected && depth === 0 ? '2px solid var(--selected-border)' : '2px solid transparent',
                 }}
-                onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--hover)'; }}
-                onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
-                {/* expand toggle */}
                 <button
                     onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
                     style={{
@@ -65,7 +67,6 @@ function Node({ node, depth, selectedId, onSelect, colorIndex = 0 }: {
                     </svg>
                 </button>
 
-                {/* dot indicator */}
                 <span style={{
                     width: isRoot ? 8 : 7, height: isRoot ? 8 : 7,
                     borderRadius: '50%', flexShrink: 0,
@@ -74,7 +75,6 @@ function Node({ node, depth, selectedId, onSelect, colorIndex = 0 }: {
                     transition: 'background 0.1s',
                 }} />
 
-                {/* label */}
                 <span style={{
                     flex: 1, fontSize: 13,
                     fontWeight: isRoot ? 600 : 400,
@@ -84,7 +84,6 @@ function Node({ node, depth, selectedId, onSelect, colorIndex = 0 }: {
                     {v.version_label || v.branch_name}
                 </span>
 
-                {/* patch count */}
                 {v.patches.length > 0 && (
                     <span style={{
                         fontSize: 10, color: 'var(--text-faint)',
@@ -94,9 +93,24 @@ function Node({ node, depth, selectedId, onSelect, colorIndex = 0 }: {
                         {v.patches.length}
                     </span>
                 )}
+
+                {!isRoot && isLeaf && onDelete && hovered && (
+                    <button
+                        onClick={e => { e.stopPropagation(); onDelete(v.id); }}
+                        title="Delete branch"
+                        aria-label="Delete branch"
+                        style={{
+                            width: 18, height: 18, display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', cursor: 'pointer', background: 'none',
+                            border: 'none', padding: 0, color: '#dc2626', flexShrink: 0,
+                            borderRadius: 3, fontSize: 14, lineHeight: 1,
+                        }}
+                    >
+                        ×
+                    </button>
+                )}
             </div>
 
-            {/* children with vertical line */}
             {open && node.children.length > 0 && (
                 <div style={{
                     marginLeft: depth > 0 ? 22 : 14,
@@ -110,6 +124,7 @@ function Node({ node, depth, selectedId, onSelect, colorIndex = 0 }: {
                             depth={depth + 1}
                             selectedId={selectedId}
                             onSelect={onSelect}
+                            onDelete={onDelete}
                             colorIndex={depth === 0 ? i + 1 : colorIndex}
                         />
                     ))}
@@ -119,14 +134,17 @@ function Node({ node, depth, selectedId, onSelect, colorIndex = 0 }: {
     );
 }
 
-export default function CVTree({ versions, selectedVersionId, onSelect }: {
-    versions: Version[]; selectedVersionId: string | null; onSelect: (id: string) => void;
+export default function CVTree({ versions, selectedVersionId, onSelect, onDeleteVersion }: {
+    versions: Version[]; selectedVersionId: string | null;
+    onSelect: (id: string) => void;
+    onDeleteVersion?: (id: string) => void;
 }) {
     const tree = buildTree(versions);
     if (!tree) return <div style={{ padding: 16, fontSize: 13, color: 'var(--text-faint)' }}>No versions</div>;
     return (
         <div style={{ paddingBottom: 8 }}>
-            <Node node={tree} depth={0} selectedId={selectedVersionId} onSelect={onSelect} />
+            <Node node={tree} depth={0} selectedId={selectedVersionId} onSelect={onSelect} onDelete={onDeleteVersion} />
         </div>
     );
 }
+

@@ -5,7 +5,8 @@ import CVTree from '@/components/cv/CVTree';
 import DiffViewer from '@/components/cv/DiffViewer';
 import Link from 'next/link';
 import {
-    createBranch, createSubmission, Document, downloadVersionUrl,
+    createBranch, createSubmission, deleteDocument, deleteVersion,
+    Document, downloadVersionUrl,
     fetchDocuments, fetchSubmissions, publishVersion, requestAiSuggestions,
     Submission, StructuredBlock, Suggestion, updateSuggestion, uploadDocument, Version,
 } from '@/libs/api';
@@ -482,6 +483,8 @@ export default function Dashboard() {
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [subsLoading, setSubsLoading] = useState(false);
     const [pendingEdits, setPendingEdits] = useState<Map<string, { old_value: string; new_value: string }>>(new Map());
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [docHovered, setDocHovered] = useState<string | null>(null);
 
     useEffect(() => {
         fetchDocuments()
@@ -525,6 +528,7 @@ export default function Dashboard() {
         setSelectedDocId(doc.id);
         setSelectedVersionId(doc.root_version_id ?? null);
         setModal(null);
+        setSidebarOpen(false);
     };
 
     const onBranchDone = async (v: Version) => {
@@ -547,6 +551,41 @@ export default function Dashboard() {
 
     const discardEdits = () => setPendingEdits(new Map());
 
+    const handleDeleteDoc = async (docId: string) => {
+        if (!confirm('Delete this CV and all its branches? This cannot be undone.')) return;
+        try {
+            await deleteDocument(docId);
+            const updated = docs.filter(d => d.id !== docId);
+            setDocs(updated);
+            if (selectedDocId === docId) {
+                setSelectedDocId(updated[0]?.id ?? null);
+                setSelectedVersionId(updated[0]?.root_version_id ?? null);
+            }
+        } catch (e: unknown) {
+            alert(e instanceof Error ? e.message : 'Delete failed');
+        }
+    };
+
+    const handleDeleteVersion = async (versionId: string) => {
+        if (!confirm('Delete this branch? This cannot be undone.')) return;
+        try {
+            await deleteVersion(versionId);
+            const fresh = await refreshDocs();
+            if (selectedVersionId === versionId) {
+                const doc = fresh.find(d => d.id === selectedDocId);
+                setSelectedVersionId(doc?.root_version_id ?? null);
+            }
+        } catch (e: unknown) {
+            alert(e instanceof Error ? e.message : 'Delete failed');
+        }
+    };
+
+    const selectVersion = (id: string) => {
+        setSelectedVersionId(id);
+        setActiveTab('content');
+        setSidebarOpen(false);
+    };
+
     const pendingCount = pendingEdits.size;
     const stagedPatches = [...pendingEdits.entries()].map(([path, { old_value, new_value }]) => ({
         target_path: path, operation: 'replace_text', old_value, new_value,
@@ -558,15 +597,22 @@ export default function Dashboard() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+        <div className="dashboard-root">
             {/* top bar */}
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '0 16px', height: 44, borderBottom: '1px solid var(--border)', flexShrink: 0,
-            }}>
-                <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textDecoration: 'none' }}>
-                    Resume Branches
-                </Link>
+            <div className="topbar">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button
+                        className="btn btn-ghost sidebar-toggle"
+                        style={{ padding: '4px 8px', fontSize: 16 }}
+                        onClick={() => setSidebarOpen(o => !o)}
+                        aria-label="Toggle menu"
+                    >
+                        ☰
+                    </button>
+                    <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textDecoration: 'none' }}>
+                        Resume Branches
+                    </Link>
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setModal('upload')}>
                         + Upload CV
@@ -577,12 +623,17 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div className="dashboard-body">
+                {/* sidebar overlay on mobile */}
+                {sidebarOpen && (
+                    <div
+                        className="sidebar-overlay"
+                        onClick={() => setSidebarOpen(false)}
+                    />
+                )}
+
                 {/* left panel */}
-                <div style={{
-                    width: 240, flexShrink: 0, borderRight: '1px solid var(--border)',
-                    background: 'var(--surface)', overflow: 'auto', display: 'flex', flexDirection: 'column',
-                }}>
+                <div className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`}>
                     {loading && <div style={{ padding: 16, fontSize: 13, color: 'var(--text-faint)' }}>Loading…</div>}
                     {error && <div style={{ padding: 16, fontSize: 13, color: '#dc2626' }}>{error}</div>}
 
@@ -602,21 +653,41 @@ export default function Dashboard() {
                                 {docs.map(d => (
                                     <div
                                         key={d.id}
+                                        onMouseEnter={() => setDocHovered(d.id)}
+                                        onMouseLeave={() => setDocHovered(null)}
                                         onClick={() => {
                                             setSelectedDocId(d.id);
                                             setSelectedVersionId(d.root_version_id ?? null);
                                             setActiveTab('content');
+                                            setSidebarOpen(false);
                                         }}
                                         style={{
                                             padding: '5px 8px', borderRadius: 4, cursor: 'pointer',
                                             fontSize: 13, fontWeight: d.id === selectedDocId ? 600 : 400,
                                             background: d.id === selectedDocId ? 'var(--selected-bg)' : 'transparent',
+                                            display: 'flex', alignItems: 'flex-start', gap: 4,
                                         }}
                                     >
-                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</div>
-                                        <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>
-                                            {d.versions.length} version{d.versions.length !== 1 ? 's' : ''}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>
+                                                {d.versions.length} version{d.versions.length !== 1 ? 's' : ''}
+                                            </div>
                                         </div>
+                                        {docHovered === d.id && (
+                                            <button
+                                                onClick={e => { e.stopPropagation(); handleDeleteDoc(d.id); }}
+                                                title="Delete CV"
+                                                aria-label="Delete CV"
+                                                style={{
+                                                    background: 'none', border: 'none', cursor: 'pointer',
+                                                    color: '#dc2626', fontSize: 14, lineHeight: 1, padding: '2px 2px',
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                ×
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -629,7 +700,8 @@ export default function Dashboard() {
                                     <CVTree
                                         versions={selectedDoc.versions}
                                         selectedVersionId={selectedVersionId}
-                                        onSelect={id => { setSelectedVersionId(id); setActiveTab('content'); }}
+                                        onSelect={selectVersion}
+                                        onDeleteVersion={handleDeleteVersion}
                                     />
                                 </div>
                             )}
@@ -638,7 +710,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* main panel */}
-                <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+                <div className="main-panel">
                     {!selectedVersion && !loading && (
                         <div style={{ paddingTop: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
                             Select a branch to view details.
@@ -648,10 +720,10 @@ export default function Dashboard() {
                     {selectedVersion && (
                         <>
                             {/* version header */}
-                            <div style={{ padding: '16px 24px 0', flexShrink: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-                                    <div>
-                                        <h2 style={{ fontSize: 17, fontWeight: 600, marginBottom: 3 }}>
+                            <div style={{ padding: '16px 20px 0', flexShrink: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
+                                    <div style={{ minWidth: 0 }}>
+                                        <h2 style={{ fontSize: 17, fontWeight: 600, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {selectedVersion.version_label || selectedVersion.branch_name}
                                         </h2>
                                         <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
@@ -673,7 +745,7 @@ export default function Dashboard() {
                                     </div>
 
                                     {/* action buttons */}
-                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                    <div className="action-buttons">
                                         <button className="btn btn-ghost" onClick={() => setModal('branch')}>Branch</button>
                                         <button className="btn btn-ghost" onClick={() => { setModal('submission'); }}>Submit</button>
                                         <button className="btn btn-ghost" onClick={() => setModal('publish')}>Publish</button>
@@ -700,7 +772,7 @@ export default function Dashboard() {
                                 {pendingCount > 0 && (
                                     <div style={{
                                         padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a',
-                                        borderRadius: 5, marginBottom: 12, fontSize: 13, display: 'flex', gap: 10, alignItems: 'center',
+                                        borderRadius: 5, marginBottom: 12, fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
                                     }}>
                                         <span style={{ color: '#92400e', flex: 1 }}>
                                             {pendingCount} staged edit{pendingCount !== 1 ? 's' : ''}
@@ -719,7 +791,7 @@ export default function Dashboard() {
                                 )}
 
                                 {/* tabs */}
-                                <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
                                     {(['content', 'patches', 'submissions'] as Tab[]).map(t => (
                                         <button
                                             key={t}
@@ -729,7 +801,7 @@ export default function Dashboard() {
                                                 cursor: 'pointer', color: activeTab === t ? 'var(--text)' : 'var(--text-muted)',
                                                 borderBottom: activeTab === t ? '2px solid var(--text)' : '2px solid transparent',
                                                 fontWeight: activeTab === t ? 500 : 400,
-                                                marginBottom: -1, transition: 'color 0.1s',
+                                                marginBottom: -1, transition: 'color 0.1s', whiteSpace: 'nowrap',
                                             }}
                                         >
                                             {t === 'patches' ? `Patches (${selectedVersion.patches.length})` : t.charAt(0).toUpperCase() + t.slice(1)}
@@ -739,7 +811,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* tab content */}
-                            <div style={{ padding: '16px 24px', flex: 1, overflow: 'auto' }}>
+                            <div style={{ padding: '16px 20px', flex: 1, overflow: 'auto' }}>
                                 {activeTab === 'content' && (
                                     <ContentTab
                                         blocks={selectedVersion.structured_blocks ?? []}

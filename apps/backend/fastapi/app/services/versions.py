@@ -82,3 +82,28 @@ async def create_branch(
     )
     result = await session.execute(stmt_refresh)
     return result.scalars().one()
+
+
+async def delete_version(
+    session: AsyncSession, owner_id: str, version_id: str
+) -> bool | str:
+    """Delete a non-root branch. Returns False if not found, 'root' if root, True on success."""
+    stmt = (
+        select(CvVersion)
+        .join(CvVersion.document)
+        .where(CvVersion.id == version_id, CvDocument.owner_id == owner_id)
+    )
+    result = await session.execute(stmt)
+    version = result.scalars().one_or_none()
+    if not version:
+        return False
+    if not version.parent_version_id:
+        return "root"
+    # Refuse if child branches exist
+    child_stmt = select(CvVersion.id).where(CvVersion.parent_version_id == version_id).limit(1)
+    child_result = await session.execute(child_stmt)
+    if child_result.scalar_one_or_none():
+        return "has_children"
+    await session.delete(version)
+    await session.commit()
+    return True
