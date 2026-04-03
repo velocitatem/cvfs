@@ -21,7 +21,11 @@ class CvDocument(Base, IdentifierMixin, TimestampMixin):
     )
 
     versions: Mapped[list["CvVersion"]] = relationship(
-        "CvVersion", back_populates="document", foreign_keys="[CvVersion.document_id]"
+        "CvVersion",
+        back_populates="document",
+        foreign_keys="[CvVersion.document_id]",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
