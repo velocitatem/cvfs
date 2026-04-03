@@ -3,23 +3,28 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-function normalizeIssuer(url?: string | null) {
+function authentikBase(url?: string | null) {
     if (!url) return null;
-    return url.replace(/\/application\/o\/authorize\/?$/, '').replace(/\/$/, '');
+    try {
+        const parsed = new URL(url);
+        return parsed.origin.replace(/\/$/, '');
+    } catch {
+        return null;
+    }
 }
 
 function authentikUrl() {
-    const issuer = normalizeIssuer(process.env.NEXT_PUBLIC_AUTHENTIK_ISSUER);
+    const baseHost = authentikBase(process.env.NEXT_PUBLIC_AUTHENTIK_ISSUER);
     const clientId = process.env.NEXT_PUBLIC_AUTHENTIK_CLIENT_ID;
     const base = process.env.NEXT_PUBLIC_BASE_URL ?? (typeof window !== 'undefined' ? window.location.origin : '');
-    if (!issuer || !clientId) return null;
+    if (!baseHost || !clientId) return null;
     const params = new URLSearchParams({
         response_type: 'code',
         client_id: clientId,
         redirect_uri: `${base}/api/auth/callback`,
         scope: 'openid email profile',
     });
-    return `${issuer}/application/o/authorize/?${params}`;
+    return `${baseHost}/application/o/authorize/?${params}`;
 }
 
 export default function LoginPage() {

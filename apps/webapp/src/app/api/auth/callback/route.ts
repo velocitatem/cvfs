@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+function authentikBase(url?: string | null) {
+    if (!url) return null;
+    try {
+        const parsed = new URL(url);
+        return parsed.origin.replace(/\/$/, '');
+    } catch {
+        return null;
+    }
+}
+
 export async function GET(req: NextRequest) {
     const { searchParams, origin } = new URL(req.url);
     const code = searchParams.get('code');
@@ -11,13 +21,13 @@ export async function GET(req: NextRequest) {
     const clientSecret = process.env.AUTHENTIK_CLIENT_SECRET;
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL ?? origin}/api/auth/callback`;
 
-    const issuer = issuerRaw?.replace(/\/application\/o\/authorize\/?$/, '').replace(/\/$/, '');
+    const authentikHost = authentikBase(issuerRaw);
 
-    if (!issuer || !clientId || !clientSecret) {
+    if (!authentikHost || !clientId || !clientSecret) {
         return NextResponse.redirect(`${origin}/login?error=oidc_not_configured`);
     }
 
-    const tokenRes = await fetch(`${issuer}/application/o/token/`, {
+    const tokenRes = await fetch(`${authentikHost}/application/o/token/`, {
         method: 'POST',
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
