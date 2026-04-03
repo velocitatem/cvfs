@@ -3,8 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+function normalizeIssuer(url?: string | null) {
+    if (!url) return null;
+    return url.replace(/\/application\/o\/authorize\/?$/, '').replace(/\/$/, '');
+}
+
 function authentikUrl() {
-    const issuer = process.env.NEXT_PUBLIC_AUTHENTIK_ISSUER;
+    const issuer = normalizeIssuer(process.env.NEXT_PUBLIC_AUTHENTIK_ISSUER);
     const clientId = process.env.NEXT_PUBLIC_AUTHENTIK_CLIENT_ID;
     const base = process.env.NEXT_PUBLIC_BASE_URL ?? (typeof window !== 'undefined' ? window.location.origin : '');
     if (!issuer || !clientId) return null;

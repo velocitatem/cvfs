@@ -6,10 +6,12 @@ export async function GET(req: NextRequest) {
 
     if (!code) return NextResponse.redirect(`${origin}/login?error=no_code`);
 
-    const issuer = process.env.AUTHENTIK_ISSUER;
+    const issuerRaw = process.env.AUTHENTIK_ISSUER;
     const clientId = process.env.AUTHENTIK_CLIENT_ID;
     const clientSecret = process.env.AUTHENTIK_CLIENT_SECRET;
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL ?? origin}/api/auth/callback`;
+
+    const issuer = issuerRaw?.replace(/\/application\/o\/authorize\/?$/, '').replace(/\/$/, '');
 
     if (!issuer || !clientId || !clientSecret) {
         return NextResponse.redirect(`${origin}/login?error=oidc_not_configured`);
