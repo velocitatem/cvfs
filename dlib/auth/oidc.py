@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import time
 from typing import Any
-from urllib.parse import urlparse, urlunparse
 
 import httpx
 from jose import JWTError, jwt
@@ -24,23 +23,7 @@ class TokenValidationError(Exception):
 def _normalize_issuer(value: str | None) -> str | None:
     if not value:
         return None
-    parsed = urlparse(value.strip())
-    path = parsed.path.rstrip("/")
-    if not path:
-        return urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
-    segments = [segment for segment in path.split("/") if segment]
-    if (
-        len(segments) >= 4
-        and segments[0] == "application"
-        and segments[1] == "o"
-        and segments[2] == "authorize"
-    ):
-        segments.pop(2)
-    normalized_path = "/" + "/".join(segments)
-    normalized = urlunparse(
-        (parsed.scheme, parsed.netloc, normalized_path.rstrip("/"), "", "", "")
-    )
-    return normalized.rstrip("/")
+    return value.strip().rstrip("/")
 
 
 class OidcTokenValidator:
