@@ -11,6 +11,10 @@ services:
     build:
       context: ./
       dockerfile: ./docker/webapp.Dockerfile
+      args:
+        NEXT_PUBLIC_AUTHENTIK_ISSUER: ${NEXT_PUBLIC_AUTHENTIK_ISSUER}
+        NEXT_PUBLIC_AUTHENTIK_CLIENT_ID: ${NEXT_PUBLIC_AUTHENTIK_CLIENT_ID}
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-https://cv.alves.world}
     environment:
       - API_BASE_URL=http://cvfs-backend:8080
       - AUTHENTIK_ISSUER=${AUTHENTIK_ISSUER}
