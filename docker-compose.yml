@@ -11,10 +11,14 @@ services:
     build:
       context: ./
       dockerfile: ./docker/webapp.Dockerfile
-    env_file:
-      - .env
     environment:
       - API_BASE_URL=http://cvfs-backend:8080
+      - AUTHENTIK_ISSUER=${AUTHENTIK_ISSUER}
+      - AUTHENTIK_CLIENT_ID=${AUTHENTIK_CLIENT_ID}
+      - AUTHENTIK_CLIENT_SECRET=${AUTHENTIK_CLIENT_SECRET}
+      - NEXT_PUBLIC_AUTHENTIK_ISSUER=${NEXT_PUBLIC_AUTHENTIK_ISSUER}
+      - NEXT_PUBLIC_AUTHENTIK_CLIENT_ID=${NEXT_PUBLIC_AUTHENTIK_CLIENT_ID}
+      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-https://cv.alves.world}
     networks:
       - dokploy-network
       - cvfs-network
@@ -31,8 +35,6 @@ services:
     build:
       context: ./
       dockerfile: ./docker/backend-fastapi.Dockerfile
-    env_file:
-      - .env
     environment:
       - BACKEND_PORT=8080
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@cvfs-postgres:5432/resume_branches
@@ -47,6 +49,9 @@ services:
       - CELERY_BROKER_URL=redis://cvfs-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://cvfs-redis:6379/0
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - AUTH_OIDC_ISSUER=${AUTH_OIDC_ISSUER}
+      - AUTH_OIDC_AUDIENCE=${AUTH_OIDC_AUDIENCE}
+      - AUTH_DISABLE_VERIFICATION=${AUTH_DISABLE_VERIFICATION:-false}
     depends_on:
       - postgres
       - minio
@@ -67,8 +72,6 @@ services:
     build:
       context: ./
       dockerfile: ./docker/worker.Dockerfile
-    env_file:
-      - .env
     environment:
       - REDIS_URL=redis://cvfs-redis:6379/0
       - CELERY_BROKER_URL=redis://cvfs-redis:6379/0
@@ -90,8 +93,6 @@ services:
   redis:
     container_name: "cvfs-redis"
     image: redis:7-alpine
-    env_file:
-      - .env
     volumes:
       - redis_data:/data
     networks:
@@ -101,8 +102,6 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: "cvfs-postgres"
-    env_file:
-      - .env
     environment:
       POSTGRES_DB: resume_branches
       POSTGRES_USER: postgres
@@ -116,8 +115,6 @@ services:
   minio:
     image: minio/minio:latest
     container_name: "cvfs-minio"
-    env_file:
-      - .env
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -132,8 +129,6 @@ services:
   create-bucket:
     image: minio/mc
     container_name: "cvfs-create-bucket"
-    env_file:
-      - .env
     depends_on:
       - minio
     networks:
