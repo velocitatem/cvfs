@@ -84,6 +84,55 @@ async def request_ai_suggestions(
     return created
 
 
+async def list_submissions(
+    session: AsyncSession,
+    *,
+    owner_id: str,
+    version_id: str | None = None,
+) -> list[Submission]:
+    stmt = (
+        select(Submission)
+        .join(Submission.version)
+        .join(CvVersion.document)
+        .where(CvDocument.owner_id == owner_id)
+        .options(selectinload(Submission.suggestions))
+    )
+    if version_id:
+        stmt = stmt.where(Submission.version_id == version_id)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_submission(
+    session: AsyncSession, *, owner_id: str, submission_id: str
+) -> Submission | None:
+    return await _get_submission_for_owner(session, owner_id, submission_id)
+
+
+async def update_suggestion(
+    session: AsyncSession,
+    *,
+    owner_id: str,
+    submission_id: str,
+    suggestion_id: str,
+    accepted: bool,
+) -> AiSuggestion | None:
+    submission = await _get_submission_for_owner(session, owner_id, submission_id)
+    if not submission:
+        return None
+    stmt = select(AiSuggestion).where(
+        AiSuggestion.id == suggestion_id, AiSuggestion.submission_id == submission_id
+    )
+    result = await session.execute(stmt)
+    suggestion = result.scalars().one_or_none()
+    if not suggestion:
+        return None
+    suggestion.accepted = accepted
+    await session.commit()
+    await session.refresh(suggestion)
+    return suggestion
+
+
 async def _get_version_for_owner(
     session: AsyncSession, owner_id: str, version_id: str
 ) -> CvVersion | None:

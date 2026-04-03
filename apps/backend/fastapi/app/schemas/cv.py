@@ -123,3 +123,7 @@ class PublicAssetResponse(BaseModel):
 
 class PublicAssetLookupResponse(BaseModel):
     asset: PublicAssetResponse
+
+
+class SuggestionUpdateRequest(BaseModel):
+    accepted: bool

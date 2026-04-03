@@ -1,5 +1,3 @@
-// Empty base: all API calls go to /api/* which Next.js rewrites to the backend.
-// The actual backend URL is set via API_BASE_URL env var in next.config.ts (server-side, runtime).
 const API = "";
 
 export type StructuredBlock = {
@@ -42,6 +40,16 @@ export type Document = {
     updated_at: string;
 };
 
+export type Suggestion = {
+    id: string;
+    target_path: string;
+    operation: string;
+    proposed_text?: string | null;
+    rationale?: string | null;
+    accepted?: boolean | null;
+    metadata_json?: { keywords?: string[]; confidence?: number } | null;
+};
+
 export type Submission = {
     id: string;
     version_id: string;
@@ -50,6 +58,7 @@ export type Submission = {
     job_url?: string | null;
     job_description?: string | null;
     status: string;
+    suggestions: Suggestion[];
     created_at: string;
 };
 
@@ -64,10 +73,17 @@ export type PublicAsset = {
     created_at: string;
 };
 
+// reads OIDC bearer token from client-readable cookie (set by /api/auth/callback)
+function getAuthHeader(): Record<string, string> {
+    if (typeof document === 'undefined') return {};
+    const token = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('oidc_token_pub='))?.split('=')[1];
+    return token ? { authorization: `Bearer ${decodeURIComponent(token)}` } : {};
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API}${path}`, {
         ...init,
-        headers: { accept: "application/json", ...init?.headers },
+        headers: { accept: 'application/json', ...getAuthHeader(), ...init?.headers },
     });
     if (!res.ok) {
         const detail = await res.text().catch(() => res.statusText);
@@ -77,17 +93,17 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const fetchDocuments = (): Promise<Document[]> =>
-    req<{ items: Document[] }>("/api/v1/documents", { cache: "no-store" }).then(r => r.items);
+    req<{ items: Document[] }>('/api/v1/documents', { cache: 'no-store' }).then(r => r.items);
 
 export const fetchDocument = (id: string): Promise<Document> =>
-    req<Document>(`/api/v1/documents/${id}`, { cache: "no-store" });
+    req<Document>(`/api/v1/documents/${id}`, { cache: 'no-store' });
 
 export async function uploadDocument(title: string, description: string | null, file: File): Promise<Document> {
     const form = new FormData();
-    form.append("title", title);
-    if (description) form.append("description", description);
-    form.append("file", file);
-    return req<Document>("/api/v1/documents", { method: "POST", body: form });
+    form.append('title', title);
+    if (description) form.append('description', description);
+    form.append('file', file);
+    return req<Document>('/api/v1/documents', { method: 'POST', body: form });
 }
 
 export const downloadVersionUrl = (documentId: string, versionId: string): string =>
@@ -99,9 +115,9 @@ export async function createBranch(
     versionLabel?: string | null,
     patches: Record<string, unknown>[] = [],
 ): Promise<Version> {
-    return req<Version>("/api/v1/versions/branches", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+    return req<Version>('/api/v1/versions/branches', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ parent_version_id: parentVersionId, branch_name: branchName, version_label: versionLabel ?? null, patches }),
     });
 }
@@ -113,10 +129,40 @@ export async function createSubmission(
     jobUrl?: string | null,
     jobDescription?: string | null,
 ): Promise<Submission> {
-    return req<Submission>("/api/v1/submissions", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+    return req<Submission>('/api/v1/submissions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ version_id: versionId, company_name: companyName, role_title: roleTitle, job_url: jobUrl ?? null, job_description: jobDescription ?? null }),
+    });
+}
+
+export const fetchSubmissions = (versionId: string): Promise<Submission[]> =>
+    req<Submission[]>(`/api/v1/submissions?version_id=${versionId}`);
+
+export const fetchSubmission = (id: string): Promise<Submission> =>
+    req<Submission>(`/api/v1/submissions/${id}`);
+
+export async function requestAiSuggestions(
+    submissionId: string,
+    jobDescription: string,
+    focusKeywords: string[] = [],
+): Promise<Suggestion[]> {
+    return req<Suggestion[]>(`/api/v1/submissions/${submissionId}/ai`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ job_description: jobDescription, focus_keywords: focusKeywords }),
+    });
+}
+
+export async function updateSuggestion(
+    submissionId: string,
+    suggestionId: string,
+    accepted: boolean,
+): Promise<Suggestion> {
+    return req<Suggestion>(`/api/v1/submissions/${submissionId}/suggestions/${suggestionId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ accepted }),
     });
 }
 
@@ -125,10 +171,9 @@ export async function publishVersion(
     submissionId?: string | null,
     slug?: string | null,
 ): Promise<PublicAsset> {
-    return req<PublicAsset>("/api/v1/public/publish", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+    return req<PublicAsset>('/api/v1/public/publish', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ version_id: versionId ?? null, submission_id: submissionId ?? null, slug: slug ?? null }),
     });
 }
-

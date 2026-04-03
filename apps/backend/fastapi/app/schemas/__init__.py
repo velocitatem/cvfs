@@ -10,6 +10,7 @@ from .cv import (
     SubmissionCreateRequest,
     SubmissionResponse,
     SuggestionResponse,
+    SuggestionUpdateRequest,
     VersionResponse,
 )
 
@@ -23,6 +24,7 @@ __all__ = [
     "SubmissionResponse",
     "AiSuggestionRequest",
     "SuggestionResponse",
+    "SuggestionUpdateRequest",
     "PublishRequest",
     "PublicAssetResponse",
     "PublicAssetLookupResponse",
