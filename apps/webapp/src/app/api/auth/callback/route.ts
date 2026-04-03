@@ -19,12 +19,13 @@ export async function GET(req: NextRequest) {
     const issuerRaw = process.env.AUTHENTIK_ISSUER;
     const clientId = process.env.AUTHENTIK_CLIENT_ID;
     const clientSecret = process.env.AUTHENTIK_CLIENT_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL ?? origin}/api/auth/callback`;
+    const publicBase = process.env.NEXT_PUBLIC_BASE_URL ?? origin;
+    const redirectUri = `${publicBase}/api/auth/callback`;
 
     const authentikHost = authentikBase(issuerRaw);
 
     if (!authentikHost || !clientId || !clientSecret) {
-        return NextResponse.redirect(`${origin}/login?error=oidc_not_configured`);
+        return NextResponse.redirect(`${publicBase}/login?error=oidc_not_configured`);
     }
 
     const tokenRes = await fetch(`${authentikHost}/application/o/token/`, {
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
     if (!tokenRes?.ok) return NextResponse.redirect(`${origin}/login?error=token_exchange`);
 
     const tokens = await tokenRes.json();
-    const res = NextResponse.redirect(`${origin}/dashboard`);
+    const res = NextResponse.redirect(`${publicBase}/dashboard`);
     res.cookies.set('oidc_token', tokens.access_token, {
         httpOnly: true, sameSite: 'lax', path: '/',
         maxAge: tokens.expires_in ?? 3600,
