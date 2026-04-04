@@ -19,6 +19,7 @@ pydantic
 pydantic-settings
 python-jose[cryptography]
 python-docx
+reportlab
 python-multipart
 boto3
 
