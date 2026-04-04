@@ -1,7 +1,18 @@
 # Resume Branches
 CV control plane that treats your resume like a git tree: preserve one canonical ATS-safe DOCX, branch it into role/company variants, review AI-suggested patches, and publish stable public links without losing structure.
 
-![cv tree sketch](docs/resume-branches/cv-tree.png)
+```mermaid
+graph TD
+    ROOT[Root CV]
+    ROOT --> SPEC1[Specialization: ML Engineer]
+    ROOT --> SPEC2[Specialization: Product Engineer]
+    SPEC1 --> SUB1[Submission: Company A]
+    SPEC1 --> SUB2[Submission: Company B]
+    SPEC2 --> SUB3[Submission: Company C]
+    SUB1 --> PUB1[Published Public Link]
+    SUB2 --> PUB2[Published Public Link]
+    SUB3 --> PUB3[Published Public Link]
+```
 
 ## Why Resume Branches exists
 - **Preserve canonical formatting.** We never regenerate the DOCX wholesale; edits are stored as targeted patches on parsed blocks so ATS cues stay intact.
