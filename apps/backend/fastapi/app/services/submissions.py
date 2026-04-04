@@ -33,8 +33,7 @@ async def create_submission(
     )
     session.add(submission)
     await session.commit()
-    await session.refresh(submission)
-    return submission
+    return await _get_submission_for_owner(session, owner_id, submission.id)
 
 
 async def request_ai_suggestions(
@@ -145,8 +144,7 @@ async def update_submission_status(
         return None
     submission.status = status
     await session.commit()
-    await session.refresh(submission)
-    return submission
+    return await _get_submission_for_owner(session, owner_id, submission_id)
 
 
 async def _get_version_for_owner(
@@ -171,7 +169,10 @@ async def _get_submission_for_owner(
         .join(Submission.version)
         .join(CvVersion.document)
         .where(Submission.id == submission_id, CvDocument.owner_id == owner_id)
-        .options(selectinload(Submission.version))
+        .options(
+            selectinload(Submission.version),
+            selectinload(Submission.suggestions),
+        )
     )
     result = await session.execute(stmt)
     return result.scalars().one_or_none()
