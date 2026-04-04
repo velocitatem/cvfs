@@ -495,7 +495,7 @@ export default function Dashboard() {
                 setDocs(d);
                 if (d.length) { setSelectedDocId(d[0].id); setSelectedVersionId(d[0].root_version_id ?? null); }
             })
-            .catch(e => setError(e.message))
+            .catch(() => setError('Failed to load documents. Make sure the backend is running.'))
             .finally(() => setLoading(false));
     }, []);
 
