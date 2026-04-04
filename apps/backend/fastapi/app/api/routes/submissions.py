@@ -8,6 +8,7 @@ from app.schemas import (
     AiSuggestionRequest,
     SubmissionCreateRequest,
     SubmissionResponse,
+    SubmissionStatusUpdateRequest,
     SuggestionResponse,
     SuggestionUpdateRequest,
 )
@@ -16,8 +17,10 @@ from app.services.submissions import (
     get_submission,
     list_submissions,
     request_ai_suggestions,
+    update_submission_status,
     update_suggestion,
 )
+from app.models import SubmissionStatus
 from dlib.auth import AuthenticatedUser
 
 
@@ -40,7 +43,9 @@ async def get_submission_endpoint(
     session: AsyncSession = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    submission = await get_submission(session, owner_id=user.sub, submission_id=submission_id)
+    submission = await get_submission(
+        session, owner_id=user.sub, submission_id=submission_id
+    )
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     return SubmissionResponse.model_validate(submission)
@@ -66,6 +71,24 @@ async def create_submission_endpoint(
     return SubmissionResponse.model_validate(submission)
 
 
+@router.patch("/{submission_id}/status", response_model=SubmissionResponse)
+async def update_submission_status_endpoint(
+    submission_id: str,
+    payload: SubmissionStatusUpdateRequest,
+    session: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    submission = await update_submission_status(
+        session,
+        owner_id=user.sub,
+        submission_id=submission_id,
+        status=SubmissionStatus(payload.status),
+    )
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return SubmissionResponse.model_validate(submission)
+
+
 @router.post("/{submission_id}/ai", response_model=list[SuggestionResponse])
 async def request_submissions_ai(
     submission_id: str,
@@ -85,7 +108,9 @@ async def request_submissions_ai(
     return [SuggestionResponse.model_validate(item) for item in suggestions]
 
 
-@router.patch("/{submission_id}/suggestions/{suggestion_id}", response_model=SuggestionResponse)
+@router.patch(
+    "/{submission_id}/suggestions/{suggestion_id}", response_model=SuggestionResponse
+)
 async def update_suggestion_endpoint(
     submission_id: str,
     suggestion_id: str,

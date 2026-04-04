@@ -11,7 +11,14 @@ import {
     fetchDocuments, fetchSubmissions, fetchPublicAssetAnalytics, getPublicPdfUrl,
     publishVersion, PublicAsset, PublicAssetAnalytics,
     requestAiSuggestions,
-    Submission, StructuredBlock, Suggestion, updateSuggestion, uploadDocument, Version,
+    Submission,
+    SubmissionStatus,
+    StructuredBlock,
+    Suggestion,
+    updateSubmissionStatus,
+    updateSuggestion,
+    uploadDocument,
+    Version,
 } from '@/libs/api';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -20,12 +27,32 @@ function fmt(iso: string) {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function statusBadge(status: string) {
+const SUBMISSION_STATUS_LABELS: Record<SubmissionStatus, string> = {
+    draft: 'Draft',
+    tailoring: 'Tailoring',
+    pending_review: 'Passed screening',
+    published: 'Submitted',
+    archived: 'Closed',
+};
+
+const SUBMISSION_STATUS_OPTIONS: Array<{ value: SubmissionStatus; label: string }> = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'tailoring', label: 'Tailoring' },
+    { value: 'published', label: 'Submitted' },
+    { value: 'pending_review', label: 'Passed screening' },
+    { value: 'archived', label: 'Closed' },
+];
+
+function isSubmittedStatus(status: SubmissionStatus) {
+    return status === 'published' || status === 'pending_review' || status === 'archived';
+}
+
+function statusBadge(status: SubmissionStatus) {
     const cls = ({
         draft: 'badge-draft', tailoring: 'badge-submitted', pending_review: 'badge-interviewing',
         published: 'badge-public', archived: 'badge-closed',
-    } as Record<string, string>)[status] ?? 'badge-draft';
-    return <span className={`badge ${cls}`}>{status.replace('_', ' ')}</span>;
+    } as Record<SubmissionStatus, string>)[status] ?? 'badge-draft';
+    return <span className={`badge ${cls}`}>{SUBMISSION_STATUS_LABELS[status] ?? status.replace('_', ' ')}</span>;
 }
 
 // ── modals ────────────────────────────────────────────────────────────────────
@@ -304,19 +331,26 @@ function ContentTab({
 // ── submissions tab ───────────────────────────────────────────────────────────
 
 function SubmissionsTab({
-    submissions, loading, versionId,
-    onNewSubmission, onRefresh,
+    submissions, loading,
+    onNewSubmission, onRefresh, onStatusChange,
 }: {
     submissions: Submission[];
     loading: boolean;
-    versionId: string;
     onNewSubmission: () => void;
     onRefresh: () => void;
+    onStatusChange: (submissionId: string, status: SubmissionStatus) => void;
 }) {
     const [expanded, setExpanded] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState<string | null>(null);
+    const [statusLoading, setStatusLoading] = useState<string | null>(null);
     const [aiJd, setAiJd] = useState<Record<string, string>>({});
     const [suggestions, setSuggestions] = useState<Record<string, Suggestion[]>>({});
+
+    const submittedCount = submissions.filter(s => isSubmittedStatus(s.status)).length;
+    const passedScreeningCount = submissions.filter(s => s.status === 'pending_review').length;
+    const successRate = submittedCount > 0
+        ? Math.round((passedScreeningCount / submittedCount) * 100)
+        : 0;
 
     const loadAi = async (s: Submission) => {
         const jd = aiJd[s.id] ?? s.job_description ?? '';
@@ -340,6 +374,19 @@ function SubmissionsTab({
         } catch { /* ignore */ }
     };
 
+    const changeStatus = async (sub: Submission, nextStatus: SubmissionStatus) => {
+        if (sub.status === nextStatus) return;
+        setStatusLoading(sub.id);
+        try {
+            const updated = await updateSubmissionStatus(sub.id, nextStatus);
+            onStatusChange(updated.id, updated.status);
+        } catch {
+            // ignore for now
+        } finally {
+            setStatusLoading(null);
+        }
+    };
+
     if (loading) return <div style={{ padding: '20px 0', color: 'var(--text-faint)', fontSize: 13 }}>Loading…</div>;
 
     return (
@@ -347,6 +394,21 @@ function SubmissionsTab({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{submissions.length} submission{submissions.length !== 1 ? 's' : ''}</span>
                 <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={onNewSubmission}>+ New submission</button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 12 }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: '#fff' }}>
+                    <div className="label" style={{ marginBottom: 4 }}>Submitted</div>
+                    <div style={{ fontSize: 18, fontWeight: 600 }}>{submittedCount}</div>
+                </div>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: '#fff' }}>
+                    <div className="label" style={{ marginBottom: 4 }}>Passed screening</div>
+                    <div style={{ fontSize: 18, fontWeight: 600 }}>{passedScreeningCount}</div>
+                </div>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: '#fff' }}>
+                    <div className="label" style={{ marginBottom: 4 }}>Success rate</div>
+                    <div style={{ fontSize: 18, fontWeight: 600 }}>{successRate}%</div>
+                </div>
             </div>
 
             {submissions.length === 0 && (
@@ -388,6 +450,20 @@ function SubmissionsTab({
                                             {s.job_url}
                                         </a>
                                     )}
+
+                                    <div style={{ marginBottom: 12 }}>
+                                        <div className="label" style={{ marginBottom: 6 }}>Application stage</div>
+                                        <select
+                                            value={s.status}
+                                            onChange={e => changeStatus(s, e.target.value as SubmissionStatus)}
+                                            disabled={statusLoading === s.id}
+                                            style={{ maxWidth: 280 }}
+                                        >
+                                            {SUBMISSION_STATUS_OPTIONS.map(option => (
+                                                <option key={option.value} value={option.value}>{option.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
 
                                     {/* AI tailoring */}
                                     <div style={{ marginBottom: 12 }}>
@@ -485,6 +561,7 @@ export default function Dashboard() {
     const [recentlyPublishedSlug, setRecentlyPublishedSlug] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('content');
     const [submissions, setSubmissions] = useState<Submission[]>([]);
+    const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
     const [subsLoading, setSubsLoading] = useState(false);
     const [pendingEdits, setPendingEdits] = useState<Map<string, { old_value: string; new_value: string }>>(new Map());
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -493,9 +570,10 @@ export default function Dashboard() {
     const [applyError, setApplyError] = useState('');
 
     useEffect(() => {
-        fetchDocuments()
-            .then(d => {
+        Promise.all([fetchDocuments(), fetchSubmissions().catch(() => [])])
+            .then(([d, allSubs]) => {
                 setDocs(d);
+                setAllSubmissions(allSubs);
                 if (d.length) { setSelectedDocId(d[0].id); setSelectedVersionId(d[0].root_version_id ?? null); }
             })
             .catch(() => setError('Failed to load documents. Make sure the backend is running.'))
@@ -521,6 +599,13 @@ export default function Dashboard() {
 
     const selectedDoc = docs.find(d => d.id === selectedDocId) ?? null;
     const selectedVersion = selectedDoc?.versions.find(v => v.id === selectedVersionId) ?? null;
+    const selectedDocVersionIds = new Set((selectedDoc?.versions ?? []).map(v => v.id));
+    const selectedDocSubmissions = allSubmissions.filter(s => selectedDocVersionIds.has(s.version_id));
+    const selectedDocSubmittedCount = selectedDocSubmissions.filter(s => isSubmittedStatus(s.status)).length;
+    const selectedDocPassedScreeningCount = selectedDocSubmissions.filter(s => s.status === 'pending_review').length;
+    const selectedDocSuccessRate = selectedDocSubmittedCount > 0
+        ? Math.round((selectedDocPassedScreeningCount / selectedDocSubmittedCount) * 100)
+        : 0;
     const publishedAssets = selectedVersion?.public_assets ?? [];
     const sortedPublishedAssets = [...publishedAssets].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     const publicBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
@@ -543,6 +628,7 @@ export default function Dashboard() {
     const refreshDocs = async () => {
         const fresh = await fetchDocuments().catch(() => docs);
         setDocs(fresh);
+        refreshAllSubs();
         return fresh;
     };
 
@@ -550,6 +636,10 @@ export default function Dashboard() {
         if (!selectedVersionId) return;
         fetchSubmissions(selectedVersionId).then(setSubmissions).catch(() => { });
     };
+
+    function refreshAllSubs() {
+        fetchSubmissions().then(setAllSubmissions).catch(() => { });
+    }
 
     const onUploadDone = (doc: Document) => {
         setDocs(prev => [doc, ...prev.filter(d => d.id !== doc.id)]);
@@ -569,8 +659,14 @@ export default function Dashboard() {
 
     const onSubmissionDone = (s: Submission) => {
         setSubmissions(prev => [s, ...prev]);
+        setAllSubmissions(prev => [s, ...prev]);
         setModal(null);
         setActiveTab('submissions');
+    };
+
+    const handleSubmissionStatusChange = (submissionId: string, status: SubmissionStatus) => {
+        setSubmissions(prev => prev.map(s => (s.id === submissionId ? { ...s, status } : s)));
+        setAllSubmissions(prev => prev.map(s => (s.id === submissionId ? { ...s, status } : s)));
     };
 
     const stageEdit = (path: string, old_value: string, new_value: string) => {
@@ -610,7 +706,6 @@ export default function Dashboard() {
     };
 
     const handleDeleteVersion = async (versionId: string) => {
-        const version = selectedDoc?.versions.find(v => v.id === versionId);
         const hasChildren = selectedDoc?.versions.some(v => v.parent_version_id === versionId);
         const msg = hasChildren
             ? 'Delete this branch and all its sub-branches? This cannot be undone.'
@@ -767,6 +862,50 @@ export default function Dashboard() {
 
                     {selectedVersion && (
                         <>
+                            {selectedDoc && (
+                                <div style={{ padding: '16px 20px 0', flexShrink: 0 }}>
+                                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: '#fff', padding: 12 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div className="label" style={{ marginBottom: 3 }}>Dashboard overview</div>
+                                                <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {selectedDoc.title}
+                                                </div>
+                                            </div>
+                                            <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{selectedDoc.versions.length} version{selectedDoc.versions.length !== 1 ? 's' : ''}</span>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 10 }}>
+                                            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
+                                                <div className="label" style={{ marginBottom: 3 }}>Submissions</div>
+                                                <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSubmissions.length}</div>
+                                            </div>
+                                            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
+                                                <div className="label" style={{ marginBottom: 3 }}>Submitted</div>
+                                                <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSubmittedCount}</div>
+                                            </div>
+                                            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
+                                                <div className="label" style={{ marginBottom: 3 }}>Passed screening</div>
+                                                <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocPassedScreeningCount}</div>
+                                            </div>
+                                            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
+                                                <div className="label" style={{ marginBottom: 3 }}>Success rate</div>
+                                                <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSuccessRate}%</div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', maxHeight: 220, overflow: 'auto' }}>
+                                            <div className="label" style={{ padding: '8px 10px 4px' }}>Full branch tree</div>
+                                            <CVTree
+                                                versions={selectedDoc.versions}
+                                                selectedVersionId={selectedVersionId}
+                                                onSelect={selectVersion}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* version header */}
                             <div style={{ padding: '16px 20px 0', flexShrink: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
@@ -934,9 +1073,9 @@ export default function Dashboard() {
                                     <SubmissionsTab
                                         submissions={submissions}
                                         loading={subsLoading}
-                                        versionId={selectedVersionId!}
                                         onNewSubmission={() => setModal('submission')}
                                         onRefresh={refreshSubs}
+                                        onStatusChange={handleSubmissionStatusChange}
                                     />
                                 )}
                             </div>

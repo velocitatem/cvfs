@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -88,6 +88,16 @@ class SubmissionCreateRequest(BaseModel):
     role_title: str
     job_url: str | None = None
     job_description: str | None = None
+
+
+class SubmissionStatusUpdateRequest(BaseModel):
+    status: Literal[
+        "draft",
+        "tailoring",
+        "pending_review",
+        "published",
+        "archived",
+    ]
 
 
 class SuggestionResponse(BaseModel):

@@ -51,6 +51,13 @@ export type Suggestion = {
     metadata_json?: { keywords?: string[]; confidence?: number } | null;
 };
 
+export type SubmissionStatus =
+    | 'draft'
+    | 'tailoring'
+    | 'pending_review'
+    | 'published'
+    | 'archived';
+
 export type Submission = {
     id: string;
     version_id: string;
@@ -58,7 +65,7 @@ export type Submission = {
     role_title: string;
     job_url?: string | null;
     job_description?: string | null;
-    status: string;
+    status: SubmissionStatus;
     suggestions: Suggestion[];
     created_at: string;
 };
@@ -159,8 +166,10 @@ export async function createSubmission(
     });
 }
 
-export const fetchSubmissions = (versionId: string): Promise<Submission[]> =>
-    req<Submission[]>(`/api/v1/submissions?version_id=${versionId}`);
+export const fetchSubmissions = (versionId?: string): Promise<Submission[]> => {
+    const query = versionId ? `?version_id=${encodeURIComponent(versionId)}` : '';
+    return req<Submission[]>(`/api/v1/submissions${query}`);
+};
 
 export const fetchSubmission = (id: string): Promise<Submission> =>
     req<Submission>(`/api/v1/submissions/${id}`);
@@ -186,6 +195,17 @@ export async function updateSuggestion(
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ accepted }),
+    });
+}
+
+export async function updateSubmissionStatus(
+    submissionId: string,
+    status: SubmissionStatus,
+): Promise<Submission> {
+    return req<Submission>(`/api/v1/submissions/${submissionId}/status`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status }),
     });
 }
 

@@ -133,6 +133,22 @@ async def update_suggestion(
     return suggestion
 
 
+async def update_submission_status(
+    session: AsyncSession,
+    *,
+    owner_id: str,
+    submission_id: str,
+    status: SubmissionStatus,
+) -> Submission | None:
+    submission = await _get_submission_for_owner(session, owner_id, submission_id)
+    if not submission:
+        return None
+    submission.status = status
+    await session.commit()
+    await session.refresh(submission)
+    return submission
+
+
 async def _get_version_for_owner(
     session: AsyncSession, owner_id: str, version_id: str
 ) -> CvVersion | None:

@@ -28,7 +28,6 @@ function Node({ node, depth, selectedId, onSelect, onDelete, colorIndex = 0 }: {
     const v = node.version;
     const isRoot = !v.parent_version_id;
     const isSelected = v.id === selectedId;
-    const isLeaf = node.children.length === 0;
     const dotColor = DOT_COLORS[colorIndex % DOT_COLORS.length];
 
     return (
@@ -147,4 +146,3 @@ export default function CVTree({ versions, selectedVersionId, onSelect, onDelete
         </div>
     );
 }
-
