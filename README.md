@@ -1,5 +1,19 @@
 # Resume Branches
-CV control plane that treats your resume like a git tree: preserve one canonical ATS-safe DOCX, branch it into role/company variants, review AI-suggested patches, and publish stable public links without losing structure.
+A CV file system for tailoring resumes with version-control discipline: keep one canonical ATS-safe DOCX, branch role/company variants, review AI-suggested patches, and publish stable public links.
+
+![Type: CV File System](https://img.shields.io/badge/type-CV%20file%20system-0f766e)
+![Frontend: Next.js](https://img.shields.io/badge/frontend-Next.js-111827)
+![Backend: FastAPI](https://img.shields.io/badge/backend-FastAPI-059669)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2563eb)](LICENSE)
+
+> Turn one master resume into a branching CV file system: specialization branches, role-specific submissions, and immutable public links without sacrificing ATS-safe formatting.
+
+**Why this feels different:**
+- Replace copy-paste resume sprawl with a single controlled source of truth.
+- Review AI edits as explicit diffs, so every wording change stays auditable.
+- Share stable published links while continuing to iterate privately.
+
+`Quick start:` [Run locally](#quick-start) | [See architecture](#system-architecture) | [Explore workflows](#primary-workflows)
 
 ```mermaid
 graph TD
@@ -20,12 +34,12 @@ graph TD
 - **Controlled AI.** The worker produces constrained patch suggestions (max delta, no new claims) so you approve meaningful wording tweaks instead of rewriting history.
 - **Publish safely.** Only frozen artifacts become public URLs; editing your working tree never breaks the links you already shared.
 
-## Core capabilities
-- Upload one ATS-safe DOCX, parse it into stable block paths, and keep the original artifact in object storage.
-- Create specialization branches with manual or AI-assisted patches while tracking provenance.
-- Tailor for each application: attach metadata, capture job descriptions, and log accepted suggestions.
-- Publish any branch/submission as an immutable DOCX/PDF with a slugged URL plus analytics.
-- Back everything with FastAPI + Postgres + MinIO + Redis + Celery so heavier jobs stay off the web tier.
+## Feature highlights
+- **Keep one source of truth.** Start from a single ATS-safe DOCX and preserve structure while every change is tracked as targeted patches.
+- **Branch your CV like code.** Spin up role and company variants in seconds without cloning files or losing lineage.
+- **Tailor faster with guardrailed AI.** Generate constrained suggestions, review diffs, and accept only what improves relevance.
+- **Ship polished versions confidently.** Publish immutable DOCX/PDF artifacts to stable links that never break after edits.
+- **Run on production-ready primitives.** FastAPI, Postgres, MinIO, Redis, and Celery separate user flows from heavy background processing.
 
 ## Quick start
 ```bash
