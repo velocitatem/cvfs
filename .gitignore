@@ -9,3 +9,4 @@ logs/
 FLAT.xml
 **/package-lock.json
 .nx/
+**/*.db
