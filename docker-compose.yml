@@ -15,6 +15,7 @@ services:
         NEXT_PUBLIC_AUTHENTIK_ISSUER: ${NEXT_PUBLIC_AUTHENTIK_ISSUER}
         NEXT_PUBLIC_AUTHENTIK_CLIENT_ID: ${NEXT_PUBLIC_AUTHENTIK_CLIENT_ID}
         NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-https://cv.alves.world}
+        API_BASE_URL: ${API_BASE_URL:-http://cvfs-backend:8080}
     environment:
       - API_BASE_URL=http://cvfs-backend:8080
       - AUTHENTIK_ISSUER=${AUTHENTIK_ISSUER}
