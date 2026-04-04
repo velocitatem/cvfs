@@ -7,7 +7,9 @@ import Link from 'next/link';
 import {
     createBranch, createSubmission, deleteDocument, deleteVersion,
     Document, downloadVersionUrl,
-    fetchDocuments, fetchSubmissions, publishVersion, requestAiSuggestions,
+    fetchDocuments, fetchSubmissions, fetchPublicAssetAnalytics, getPublicPdfUrl,
+    publishVersion, PublicAsset, PublicAssetAnalytics,
+    requestAiSuggestions,
     Submission, StructuredBlock, Suggestion, updateSuggestion, uploadDocument, Version,
 } from '@/libs/api';
 
@@ -166,7 +168,7 @@ function SubmissionModal({ version, onClose, onDone }: { version: Version; onClo
     );
 }
 
-function PublishModal({ version, onClose, onDone }: { version: Version; onClose: () => void; onDone: (url: string) => void }) {
+function PublishModal({ version, onClose, onDone }: { version: Version; onClose: () => void; onDone: (asset: PublicAsset) => void }) {
     const [slug, setSlug] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -175,7 +177,7 @@ function PublishModal({ version, onClose, onDone }: { version: Version; onClose:
         setLoading(true); setError('');
         try {
             const asset = await publishVersion(version.id, null, slug.trim() || null);
-            onDone(asset.url ?? asset.slug);
+            onDone(asset);
         } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed'); setLoading(false); }
     };
 
@@ -478,7 +480,8 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [modal, setModal] = useState<Modal>(null);
-    const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+    const [publishedAsset, setPublishedAsset] = useState<PublicAsset | null>(null);
+    const [publishedAnalytics, setPublishedAnalytics] = useState<PublicAssetAnalytics | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('content');
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [subsLoading, setSubsLoading] = useState(false);
@@ -762,14 +765,35 @@ export default function Dashboard() {
                                     </div>
                                 </div>
 
-                                {publishedUrl && (
+                                {publishedAsset && (
                                     <div style={{
-                                        padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0',
-                                        borderRadius: 5, marginBottom: 12, fontSize: 13, display: 'flex', gap: 8, alignItems: 'center',
+                                        padding: '10px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0',
+                                        borderRadius: 5, marginBottom: 12, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6,
                                     }}>
-                                        <span style={{ color: '#166534' }}>Published:</span>
-                                        <a href={publishedUrl} target="_blank" rel="noreferrer" style={{ color: '#166534', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{publishedUrl}</a>
-                                        <button onClick={() => setPublishedUrl(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#166534', fontSize: 16, lineHeight: 1 }}>×</button>
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                            <span style={{ color: '#166534', fontWeight: 500 }}>Published</span>
+                                            {publishedAnalytics !== null && (
+                                                <span style={{ color: '#166534', fontSize: 11, background: '#dcfce7', padding: '1px 7px', borderRadius: 10 }}>
+                                                    {publishedAnalytics.view_count} view{publishedAnalytics.view_count !== 1 ? 's' : ''}
+                                                </span>
+                                            )}
+                                            <button
+                                                onClick={() => fetchPublicAssetAnalytics(publishedAsset.slug).then(setPublishedAnalytics).catch(() => null)}
+                                                style={{ background: 'none', border: '1px solid #bbf7d0', cursor: 'pointer', color: '#15803d', fontSize: 11, padding: '1px 6px', borderRadius: 4 }}
+                                            >
+                                                ↻ stats
+                                            </button>
+                                            <button onClick={() => { setPublishedAsset(null); setPublishedAnalytics(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#166534', fontSize: 16, lineHeight: 1, marginLeft: 'auto' }}>×</button>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                            <a href={publishedAsset.url ?? '#'} target="_blank" rel="noreferrer" style={{ color: '#166534', fontSize: 12, textDecoration: 'underline' }}>
+                                                Share link
+                                            </a>
+                                            <span style={{ color: '#bbf7d0' }}>|</span>
+                                            <a href={getPublicPdfUrl(publishedAsset.slug)} target="_blank" rel="noreferrer" style={{ color: '#166534', fontSize: 12, textDecoration: 'underline' }}>
+                                                View PDF
+                                            </a>
+                                        </div>
                                     </div>
                                 )}
 
@@ -861,7 +885,7 @@ export default function Dashboard() {
                 <PublishModal
                     version={selectedVersion}
                     onClose={() => setModal(null)}
-                    onDone={url => { setPublishedUrl(url); setModal(null); }}
+                    onDone={asset => { setPublishedAsset(asset); setPublishedAnalytics(null); setModal(null); }}
                 />
             )}
         </div>

@@ -125,5 +125,11 @@ class PublicAssetLookupResponse(BaseModel):
     asset: PublicAssetResponse
 
 
+class PublicAssetAnalyticsResponse(BaseModel):
+    slug: str
+    view_count: int
+    last_viewed_at: datetime | None = None
+
+
 class SuggestionUpdateRequest(BaseModel):
     accepted: bool

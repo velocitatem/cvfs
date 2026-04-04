@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -138,6 +139,24 @@ class PublicAsset(Base, IdentifierMixin, TimestampMixin):
         "Submission", back_populates="public_asset"
     )
     version: Mapped[CvVersion | None] = relationship("CvVersion")
+    views: Mapped[list["PublicAssetView"]] = relationship(
+        "PublicAssetView", back_populates="public_asset", cascade="all, delete-orphan", passive_deletes=True,
+    )
+
+
+class PublicAssetView(Base, IdentifierMixin):
+    __tablename__ = "public_asset_views"
+
+    public_asset_id: Mapped[str] = mapped_column(
+        ForeignKey("public_assets.id", ondelete="CASCADE"), index=True
+    )
+    viewed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, index=True
+    )
+    user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    public_asset: Mapped[PublicAsset] = relationship("PublicAsset", back_populates="views")
 
 
 class AiSuggestion(Base, IdentifierMixin, TimestampMixin):

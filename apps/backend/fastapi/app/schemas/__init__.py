@@ -4,6 +4,7 @@ from .cv import (
     DocumentCreateResult,
     DocumentListResponse,
     DocumentResponse,
+    PublicAssetAnalyticsResponse,
     PublicAssetLookupResponse,
     PublicAssetResponse,
     PublishRequest,
@@ -28,4 +29,5 @@ __all__ = [
     "PublishRequest",
     "PublicAssetResponse",
     "PublicAssetLookupResponse",
+    "PublicAssetAnalyticsResponse",
 ]

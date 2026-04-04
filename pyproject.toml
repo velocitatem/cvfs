@@ -25,6 +25,7 @@ dependencies = [
   "python-multipart",
   "pyyaml",
   "python-jose[cryptography]",
+  "reportlab",
   "sqlalchemy[asyncio]",
   "asyncpg",
   "redis",
