@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -151,7 +151,7 @@ class PublicAssetView(Base, IdentifierMixin):
         ForeignKey("public_assets.id", ondelete="CASCADE"), index=True
     )
     viewed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, index=True
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)

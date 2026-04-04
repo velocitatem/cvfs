@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -28,10 +28,10 @@ router = APIRouter(prefix="/public", tags=["public"])
 
 async def _log_view(session: AsyncSession, asset: PublicAsset, request: Request) -> None:
     ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
-    ip_hash = hashlib.sha256(ip.split(",")[0].strip().encode()).hexdigest()[:16] if ip else None
+    ip_hash = hashlib.sha256(ip.split(",")[0].strip().encode()).hexdigest() if ip else None
     view = PublicAssetView(
         public_asset_id=asset.id,
-        viewed_at=datetime.utcnow(),
+        viewed_at=datetime.now(timezone.utc),
         user_agent=request.headers.get("user-agent", "")[:512] or None,
         ip_hash=ip_hash,
     )
@@ -116,7 +116,8 @@ async def get_public_pdf(slug: str, request: Request, session: AsyncSession = De
         version = (await session.execute(stmt)).scalars().one_or_none()
 
     docx_bytes = storage_client.download_bytes(key=asset.artifact_key)
-    patched = generate_patched_docx(docx_bytes, (version.structured_blocks or []) if version else [])
+    blocks = version.structured_blocks or [] if version else []
+    patched = generate_patched_docx(docx_bytes, blocks)
     pdf_bytes = docx_bytes_to_pdf(patched)
 
     return Response(
