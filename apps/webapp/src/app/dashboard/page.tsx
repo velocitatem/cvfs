@@ -481,8 +481,8 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [modal, setModal] = useState<Modal>(null);
-    const [publishedAsset, setPublishedAsset] = useState<PublicAsset | null>(null);
-    const [publishedAnalytics, setPublishedAnalytics] = useState<PublicAssetAnalytics | null>(null);
+    const [publishedAnalytics, setPublishedAnalytics] = useState<Record<string, PublicAssetAnalytics>>({});
+    const [recentlyPublishedSlug, setRecentlyPublishedSlug] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('content');
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [subsLoading, setSubsLoading] = useState(false);
@@ -506,6 +506,8 @@ export default function Dashboard() {
         setPendingEdits(new Map());
         setApplyError('');
         setApplyLoading(false);
+        setPublishedAnalytics({});
+        setRecentlyPublishedSlug(null);
     }, [selectedVersionId]);
 
     useEffect(() => {
@@ -519,6 +521,24 @@ export default function Dashboard() {
 
     const selectedDoc = docs.find(d => d.id === selectedDocId) ?? null;
     const selectedVersion = selectedDoc?.versions.find(v => v.id === selectedVersionId) ?? null;
+    const publishedAssets = selectedVersion?.public_assets ?? [];
+    const sortedPublishedAssets = [...publishedAssets].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const publicBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
+
+    const resolveAssetUrl = (asset: PublicAsset): string => {
+        if (asset.url) return asset.url;
+        if (publicBaseUrl) return `${publicBaseUrl}/cv/${asset.slug}`;
+        return `/cv/${asset.slug}`;
+    };
+
+    const loadPublishedAnalytics = async (slug: string) => {
+        try {
+            const stats = await fetchPublicAssetAnalytics(slug);
+            setPublishedAnalytics(prev => ({ ...prev, [slug]: stats }));
+        } catch {
+            // swallow for now; UI button can be retried
+        }
+    };
 
     const refreshDocs = async () => {
         const fresh = await fetchDocuments().catch(() => docs);
@@ -785,34 +805,64 @@ export default function Dashboard() {
                                     </div>
                                 </div>
 
-                                {publishedAsset && (
+                                {sortedPublishedAssets.length > 0 && (
                                     <div style={{
                                         padding: '10px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0',
-                                        borderRadius: 5, marginBottom: 12, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6,
+                                        borderRadius: 5, marginBottom: 12, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10,
                                     }}>
-                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                            <span style={{ color: '#166534', fontWeight: 500 }}>Published</span>
-                                            {publishedAnalytics !== null && (
-                                                <span style={{ color: '#166534', fontSize: 11, background: '#dcfce7', padding: '1px 7px', borderRadius: 10 }}>
-                                                    {publishedAnalytics.view_count} view{publishedAnalytics.view_count !== 1 ? 's' : ''}
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <span style={{ color: '#166534', fontWeight: 500 }}>Published variants ({sortedPublishedAssets.length})</span>
+                                            {recentlyPublishedSlug && (
+                                                <span style={{ fontSize: 11, color: '#14532d', background: '#dcfce7', padding: '1px 8px', borderRadius: 9999 }}>
+                                                    Latest: {recentlyPublishedSlug}
                                                 </span>
                                             )}
-                                            <button
-                                                onClick={() => fetchPublicAssetAnalytics(publishedAsset.slug).then(setPublishedAnalytics).catch(() => null)}
-                                                style={{ background: 'none', border: '1px solid #bbf7d0', cursor: 'pointer', color: '#15803d', fontSize: 11, padding: '1px 6px', borderRadius: 4 }}
-                                            >
-                                                ↻ stats
-                                            </button>
-                                            <button onClick={() => { setPublishedAsset(null); setPublishedAnalytics(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#166534', fontSize: 16, lineHeight: 1, marginLeft: 'auto' }}>×</button>
                                         </div>
-                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                            <a href={publishedAsset.url ?? '#'} target="_blank" rel="noreferrer" style={{ color: '#166534', fontSize: 12, textDecoration: 'underline' }}>
-                                                Share link
-                                            </a>
-                                            <span style={{ color: '#bbf7d0' }}>|</span>
-                                            <a href={getPublicPdfUrl(publishedAsset.slug)} target="_blank" rel="noreferrer" style={{ color: '#166534', fontSize: 12, textDecoration: 'underline' }}>
-                                                View PDF
-                                            </a>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {sortedPublishedAssets.map(asset => {
+                                                const stats = publishedAnalytics[asset.slug];
+                                                return (
+                                                    <div key={asset.id} style={{ border: '1px solid #bbf7d0', borderRadius: 6, padding: '8px 10px', background: '#fff' }}>
+                                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontFamily: 'var(--font-mono)', color: '#166534', fontSize: 12 }}>{asset.slug}</span>
+                                                            <span style={{ fontSize: 11, color: '#166534' }}>{fmt(asset.created_at)}</span>
+                                                            {recentlyPublishedSlug === asset.slug && (
+                                                                <span style={{ fontSize: 10, color: '#14532d', background: '#dcfce7', padding: '1px 6px', borderRadius: 9999 }}>New</span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                                                            <a href={resolveAssetUrl(asset)} target="_blank" rel="noreferrer" style={{ color: '#166534', fontSize: 12, textDecoration: 'underline' }}>
+                                                                Share link
+                                                            </a>
+                                                            <span style={{ color: '#bbf7d0' }}>|</span>
+                                                            <a href={getPublicPdfUrl(asset.slug)} target="_blank" rel="noreferrer" style={{ color: '#166534', fontSize: 12, textDecoration: 'underline' }}>
+                                                                View PDF
+                                                            </a>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
+                                                            <span style={{ fontSize: 11, color: '#166534' }}>
+                                                                {stats
+                                                                    ? (
+                                                                        <>
+                                                                            {stats.view_count} view{stats.view_count !== 1 ? 's' : ''}
+                                                                            {stats.last_viewed_at && (
+                                                                                <> · last {fmt(stats.last_viewed_at)}</>
+                                                                            )}
+                                                                        </>
+                                                                    )
+                                                                    : 'No stats yet'}
+                                                            </span>
+                                                            <button
+                                                                className="btn btn-ghost"
+                                                                style={{ fontSize: 11, padding: '2px 8px' }}
+                                                                onClick={() => loadPublishedAnalytics(asset.slug)}
+                                                            >
+                                                                {stats ? 'Refresh stats' : 'Fetch stats'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -914,7 +964,12 @@ export default function Dashboard() {
                 <PublishModal
                     version={selectedVersion}
                     onClose={() => setModal(null)}
-                    onDone={asset => { setPublishedAsset(asset); setPublishedAnalytics(null); setModal(null); }}
+                    onDone={asset => {
+                        setModal(null);
+                        setRecentlyPublishedSlug(asset.slug);
+                        setPublishedAnalytics({});
+                        refreshDocs();
+                    }}
                 />
             )}
         </div>

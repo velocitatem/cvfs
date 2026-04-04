@@ -25,6 +25,7 @@ export type Version = {
     structured_blocks?: StructuredBlock[] | null;
     artifact_docx_key?: string | null;
     patches: Patch[];
+    public_assets: PublicAsset[];
     created_at: string;
     updated_at: string;
 };

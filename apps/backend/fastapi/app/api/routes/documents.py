@@ -5,8 +5,14 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.config import get_settings
 from app.schemas import DocumentListResponse, DocumentResponse
-from app.services.documents import create_document, delete_document, get_document, list_documents
+from app.services.documents import (
+    create_document,
+    delete_document,
+    get_document,
+    list_documents,
+)
 from app.services.storage import storage_client
 from dlib.auth import AuthenticatedUser
 from dlib.cv import generate_patched_docx
@@ -21,7 +27,7 @@ async def list_user_documents(
     user: AuthenticatedUser = Depends(get_current_user),
 ):
     documents = await list_documents(session, owner_id=user.sub)
-    payload = [DocumentResponse.model_validate(doc) for doc in documents]
+    payload = [_build_document_response(doc) for doc in documents]
     return DocumentListResponse(items=payload)
 
 
@@ -34,7 +40,7 @@ async def get_user_document(
     document = await get_document(session, owner_id=user.sub, document_id=document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-    return DocumentResponse.model_validate(document)
+    return _build_document_response(document)
 
 
 @router.get("/{document_id}/versions/{version_id}/download")
@@ -75,7 +81,7 @@ async def upload_document(
         description=description,
         upload=file,
     )
-    return DocumentResponse.model_validate(document)
+    return _build_document_response(document)
 
 
 @router.delete("/{document_id}", status_code=204)
@@ -87,3 +93,20 @@ async def delete_user_document(
     deleted = await delete_document(session, owner_id=user.sub, document_id=document_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Document not found")
+
+
+def _build_document_response(document) -> DocumentResponse:
+    settings = get_settings()
+    base = (settings.public_base_url or "").rstrip("/")
+    response = DocumentResponse.model_validate(document)
+    versions = []
+    for version in response.versions:
+        assets = []
+        for asset in version.public_assets:
+            slug = asset.slug
+            url = asset.url
+            if slug and not url:
+                url = f"{base}/cv/{slug}" if base else f"/cv/{slug}"
+            assets.append(asset.model_copy(update={"url": url}))
+        versions.append(version.model_copy(update={"public_assets": assets}))
+    return response.model_copy(update={"versions": versions})

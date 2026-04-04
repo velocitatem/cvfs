@@ -43,7 +43,12 @@ async def create_document(
     stmt = (
         select(CvDocument)
         .where(CvDocument.id == doc.id)
-        .options(selectinload(CvDocument.versions).selectinload(CvVersion.patches))
+        .options(
+            selectinload(CvDocument.versions).options(
+                selectinload(CvVersion.patches),
+                selectinload(CvVersion.public_assets),
+            )
+        )
     )
     result = await session.execute(stmt)
     return result.scalars().unique().one()
@@ -53,7 +58,12 @@ async def list_documents(session: AsyncSession, owner_id: str) -> list[CvDocumen
     stmt = (
         select(CvDocument)
         .where(CvDocument.owner_id == owner_id)
-        .options(selectinload(CvDocument.versions).selectinload(CvVersion.patches))
+        .options(
+            selectinload(CvDocument.versions).options(
+                selectinload(CvVersion.patches),
+                selectinload(CvVersion.public_assets),
+            )
+        )
         .order_by(CvDocument.created_at.desc())
     )
     result = await session.execute(stmt)
@@ -66,7 +76,12 @@ async def get_document(
     stmt = (
         select(CvDocument)
         .where(CvDocument.id == document_id, CvDocument.owner_id == owner_id)
-        .options(selectinload(CvDocument.versions).selectinload(CvVersion.patches))
+        .options(
+            selectinload(CvDocument.versions).options(
+                selectinload(CvVersion.patches),
+                selectinload(CvVersion.public_assets),
+            )
+        )
     )
     result = await session.execute(stmt)
     return result.scalars().unique().one_or_none()

@@ -34,6 +34,7 @@ class VersionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     patches: list["PatchResponse"] = Field(default_factory=list)
+    public_assets: list["PublicAssetResponse"] = Field(default_factory=list)
 
 
 class PatchResponse(BaseModel):
