@@ -92,6 +92,11 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
         headers: { accept: 'application/json', ...getAuthHeader(), ...init?.headers },
     });
     if (!res.ok) {
+        if (res.status === 401 && typeof window !== 'undefined') {
+            document.cookie = 'oidc_token_pub=; max-age=0; path=/';
+            document.cookie = 'oidc_token=; max-age=0; path=/';
+            window.location.href = '/login';
+        }
         const detail = await res.text().catch(() => res.statusText);
         throw new Error(detail || `HTTP ${res.status}`);
     }

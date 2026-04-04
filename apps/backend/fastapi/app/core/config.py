@@ -57,6 +57,13 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
+    @field_validator("storage_endpoint_url", mode="before")
+    @classmethod
+    def _empty_endpoint_to_none(cls, value):
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

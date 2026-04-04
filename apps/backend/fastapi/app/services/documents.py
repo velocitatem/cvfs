@@ -23,20 +23,22 @@ async def create_document(
     structured = parse_docx_bytes(file_bytes, version_label="root")
 
     doc = CvDocument(owner_id=owner_id, title=title, description=description)
+    session.add(doc)
+    await session.flush()  # persist doc so version FK is satisfied
+
     version = CvVersion(
-        document=doc,
+        document_id=doc.id,
         branch_name="root",
         version_label="root",
         artifact_docx_key=artifact_key,
         structured_blocks=[block.model_dump() for block in structured.blocks],
         metadata_json={"ingested": True},
     )
-    doc.versions.append(version)
-    doc.root_version_id = version.id
+    session.add(version)
+    await session.flush()  # persist version so root_version_id FK is satisfied
 
-    session.add(doc)
+    doc.root_version_id = version.id
     await session.commit()
-    await session.refresh(doc)
 
     stmt = (
         select(CvDocument)
