@@ -574,7 +574,7 @@ export default function Dashboard() {
             .then(([d, allSubs]) => {
                 setDocs(d);
                 setAllSubmissions(allSubs);
-                if (d.length) { setSelectedDocId(d[0].id); setSelectedVersionId(d[0].root_version_id ?? null); }
+                if (d.length) { setSelectedDocId(d[0].id); setSelectedVersionId(null); }
             })
             .catch(() => setError('Failed to load documents. Make sure the backend is running.'))
             .finally(() => setLoading(false));
@@ -644,7 +644,7 @@ export default function Dashboard() {
     const onUploadDone = (doc: Document) => {
         setDocs(prev => [doc, ...prev.filter(d => d.id !== doc.id)]);
         setSelectedDocId(doc.id);
-        setSelectedVersionId(doc.root_version_id ?? null);
+        setSelectedVersionId(null);
         setModal(null);
         setSidebarOpen(false);
     };
@@ -698,7 +698,7 @@ export default function Dashboard() {
             setDocs(updated);
             if (selectedDocId === docId) {
                 setSelectedDocId(updated[0]?.id ?? null);
-                setSelectedVersionId(updated[0]?.root_version_id ?? null);
+                setSelectedVersionId(null);
             }
         } catch (e: unknown) {
             alert(e instanceof Error ? e.message : 'Delete failed');
@@ -715,8 +715,9 @@ export default function Dashboard() {
             await deleteVersion(versionId);
             const fresh = await refreshDocs();
             if (selectedVersionId === versionId) {
-                const doc = fresh.find(d => d.id === selectedDocId);
-                setSelectedVersionId(doc?.root_version_id ?? null);
+                const doc = fresh.find(d => d.id === selectedDocId) ?? null;
+                if (!doc) setSelectedDocId(null);
+                setSelectedVersionId(null);
             }
         } catch (e: unknown) {
             alert(e instanceof Error ? e.message : 'Delete failed');
@@ -800,7 +801,7 @@ export default function Dashboard() {
                                         onMouseLeave={() => setDocHovered(null)}
                                         onClick={() => {
                                             setSelectedDocId(d.id);
-                                            setSelectedVersionId(d.root_version_id ?? null);
+                                            setSelectedVersionId(null);
                                             setActiveTab('content');
                                             setSidebarOpen(false);
                                         }}
@@ -855,57 +856,61 @@ export default function Dashboard() {
                 {/* main panel */}
                 <div className="main-panel">
                     {!selectedVersion && !loading && (
-                        <div style={{ paddingTop: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
-                            Select a branch to view details.
+                        <div style={{ padding: '16px 20px', overflow: 'auto' }}>
+                            {selectedDoc ? (
+                                <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: '#fff', padding: 12 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div className="label" style={{ marginBottom: 3 }}>Dashboard overview</div>
+                                            <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {selectedDoc.title}
+                                            </div>
+                                        </div>
+                                        <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{selectedDoc.versions.length} version{selectedDoc.versions.length !== 1 ? 's' : ''}</span>
+                                    </div>
+
+                                    <div style={{ color: 'var(--text-faint)', fontSize: 13, marginBottom: 10 }}>
+                                        Select a branch to view details.
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 10 }}>
+                                        <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
+                                            <div className="label" style={{ marginBottom: 3 }}>Submissions</div>
+                                            <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSubmissions.length}</div>
+                                        </div>
+                                        <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
+                                            <div className="label" style={{ marginBottom: 3 }}>Submitted</div>
+                                            <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSubmittedCount}</div>
+                                        </div>
+                                        <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
+                                            <div className="label" style={{ marginBottom: 3 }}>Passed screening</div>
+                                            <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocPassedScreeningCount}</div>
+                                        </div>
+                                        <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
+                                            <div className="label" style={{ marginBottom: 3 }}>Success rate</div>
+                                            <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSuccessRate}%</div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', maxHeight: 320, overflow: 'auto' }}>
+                                        <div className="label" style={{ padding: '8px 10px 4px' }}>Full branch tree</div>
+                                        <CVTree
+                                            versions={selectedDoc.versions}
+                                            selectedVersionId={selectedVersionId}
+                                            onSelect={selectVersion}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ paddingTop: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
+                                    Select a resume to view details.
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {selectedVersion && (
                         <>
-                            {selectedDoc && (
-                                <div style={{ padding: '16px 20px 0', flexShrink: 0 }}>
-                                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: '#fff', padding: 12 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                                            <div style={{ minWidth: 0 }}>
-                                                <div className="label" style={{ marginBottom: 3 }}>Dashboard overview</div>
-                                                <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {selectedDoc.title}
-                                                </div>
-                                            </div>
-                                            <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{selectedDoc.versions.length} version{selectedDoc.versions.length !== 1 ? 's' : ''}</span>
-                                        </div>
-
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 10 }}>
-                                            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
-                                                <div className="label" style={{ marginBottom: 3 }}>Submissions</div>
-                                                <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSubmissions.length}</div>
-                                            </div>
-                                            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
-                                                <div className="label" style={{ marginBottom: 3 }}>Submitted</div>
-                                                <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSubmittedCount}</div>
-                                            </div>
-                                            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
-                                                <div className="label" style={{ marginBottom: 3 }}>Passed screening</div>
-                                                <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocPassedScreeningCount}</div>
-                                            </div>
-                                            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
-                                                <div className="label" style={{ marginBottom: 3 }}>Success rate</div>
-                                                <div style={{ fontSize: 18, fontWeight: 600 }}>{selectedDocSuccessRate}%</div>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', maxHeight: 220, overflow: 'auto' }}>
-                                            <div className="label" style={{ padding: '8px 10px 4px' }}>Full branch tree</div>
-                                            <CVTree
-                                                versions={selectedDoc.versions}
-                                                selectedVersionId={selectedVersionId}
-                                                onSelect={selectVersion}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                             {/* version header */}
                             <div style={{ padding: '16px 20px 0', flexShrink: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
