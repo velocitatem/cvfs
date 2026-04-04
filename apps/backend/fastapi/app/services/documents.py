@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from dlib.cv import parse_docx_bytes
 
-from app.models import CvDocument, CvVersion
+from app.models import CvDocument, CvVersion, PublicAsset
 from app.services.storage import persist_upload
 
 
@@ -78,6 +78,11 @@ async def delete_document(
     doc = await get_document(session, owner_id, document_id)
     if not doc:
         return False
+    version_ids = [version.id for version in doc.versions]
+    if version_ids:
+        await session.execute(
+            delete(PublicAsset).where(PublicAsset.version_id.in_(version_ids))
+        )
     await session.delete(doc)
     await session.commit()
     return True

@@ -56,6 +56,12 @@ class CvVersion(Base, IdentifierMixin, TimestampMixin):
     submissions: Mapped[list["Submission"]] = relationship(
         "Submission", back_populates="version"
     )
+    public_assets: Mapped[list["PublicAsset"]] = relationship(
+        "PublicAsset",
+        back_populates="version",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class CvPatch(Base, IdentifierMixin, TimestampMixin):
@@ -126,7 +132,7 @@ class PublicAsset(Base, IdentifierMixin, TimestampMixin):
         ForeignKey("submissions.id", ondelete="SET NULL"), nullable=True
     )
     version_id: Mapped[str | None] = mapped_column(
-        ForeignKey("cv_versions.id"), nullable=True
+        ForeignKey("cv_versions.id", ondelete="CASCADE"), nullable=True
     )
     slug: Mapped[str] = mapped_column(String(160), unique=True, index=True)
     artifact_key: Mapped[str] = mapped_column(String(512))
@@ -138,9 +144,14 @@ class PublicAsset(Base, IdentifierMixin, TimestampMixin):
     submission: Mapped[Submission | None] = relationship(
         "Submission", back_populates="public_asset"
     )
-    version: Mapped[CvVersion | None] = relationship("CvVersion")
+    version: Mapped[CvVersion | None] = relationship(
+        "CvVersion", back_populates="public_assets"
+    )
     views: Mapped[list["PublicAssetView"]] = relationship(
-        "PublicAssetView", back_populates="public_asset", cascade="all, delete-orphan", passive_deletes=True,
+        "PublicAssetView",
+        back_populates="public_asset",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
@@ -156,7 +167,9 @@ class PublicAssetView(Base, IdentifierMixin):
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
-    public_asset: Mapped[PublicAsset] = relationship("PublicAsset", back_populates="views")
+    public_asset: Mapped[PublicAsset] = relationship(
+        "PublicAsset", back_populates="views"
+    )
 
 
 class AiSuggestion(Base, IdentifierMixin, TimestampMixin):
