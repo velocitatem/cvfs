@@ -52,9 +52,15 @@ class CvVersion(Base, IdentifierMixin, TimestampMixin):
     parent: Mapped["CvVersion | None"] = relationship(
         "CvVersion", remote_side="[CvVersion.id]"
     )
-    patches: Mapped[list["CvPatch"]] = relationship("CvPatch", back_populates="version")
+    patches: Mapped[list["CvPatch"]] = relationship(
+        "CvPatch",
+        back_populates="version",
+        cascade="all, delete-orphan",
+    )
     submissions: Mapped[list["Submission"]] = relationship(
-        "Submission", back_populates="version"
+        "Submission",
+        back_populates="version",
+        cascade="all, delete-orphan",
     )
     public_assets: Mapped[list["PublicAsset"]] = relationship(
         "PublicAsset",
@@ -118,7 +124,9 @@ class Submission(Base, IdentifierMixin, TimestampMixin):
 
     version: Mapped[CvVersion] = relationship("CvVersion", back_populates="submissions")
     suggestions: Mapped[list["AiSuggestion"]] = relationship(
-        "AiSuggestion", back_populates="submission"
+        "AiSuggestion",
+        back_populates="submission",
+        cascade="all, delete-orphan",
     )
     public_asset: Mapped["PublicAsset | None"] = relationship(
         "PublicAsset", back_populates="submission"
