@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from functools import lru_cache
-from typing import List
+from typing import Annotated, List
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, NoDecode
 
 
 class Settings(BaseSettings):
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/resume_branches",
         alias="DATABASE_URL",
     )
-    cors_origins: List[str] = Field(
+    cors_origins: Annotated[List[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:3000"], alias="CORS_ORIGINS"
     )
 
@@ -54,6 +55,15 @@ class Settings(BaseSettings):
     @classmethod
     def _split_origins(cls, value):
         if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            if stripped.startswith("["):
+                parsed = json.loads(stripped)
+                if isinstance(parsed, list):
+                    return [
+                        str(origin).strip() for origin in parsed if str(origin).strip()
+                    ]
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
