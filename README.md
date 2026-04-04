@@ -47,16 +47,27 @@ Need Redis/Postgres locally? `make lift.database` (Postgres) and `make up` (Redi
 | Shared lib (`dlib`) | Python package | DOCX parser, block schema, patch application/validation, AI prompt helpers, storage adapters |
 | Data plane | Postgres + MinIO + Redis | Metadata (documents/versions/patches/submissions), artifact storage (DOCX/PDF/HTML), queues + locks |
 
-```
-┌────────┐    GraphQL-like REST        ┌────────────┐      Object storage
-│ Webapp │ ─────────────────────────▶ │ FastAPI API│ ───▶  (MinIO/S3)
-└────────┘    Auth cookie / JWT        └──────┬─────┘      ┌────────┐
-      ▲                                      │            │ Worker │
-      │ Webhooks / SSE                        └────┬─────▶ └────────┘
-      │                                               │
-      │                                       Redis queue / locks
-      │                                               │
-      │                                      Postgres metadata
+```mermaid
+flowchart LR
+    U[User Browser]
+    W[Webapp\nNext.js]
+    API[FastAPI API]
+    WK[Worker\nCelery]
+    PG[(Postgres)]
+    RD[(Redis)]
+    MN[(MinIO / S3)]
+
+    U -->|HTTPS| W
+    W -->|REST + JWT/Cookie| API
+    API -->|CRUD metadata| PG
+    API -->|enqueue jobs| RD
+    API -->|store/fetch artifacts| MN
+
+    WK -->|consume jobs| RD
+    WK -->|read/write metadata| PG
+    WK -->|render + publish assets| MN
+
+    API -.->|status/events| W
 ```
 
 ## Data model snapshot
