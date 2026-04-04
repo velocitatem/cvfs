@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -12,7 +12,7 @@ from dlib.cv import (
     validate_patchset,
 )
 
-from app.models import CvDocument, CvPatch, CvVersion
+from app.models import CvDocument, CvPatch, CvVersion, PublicAsset
 
 
 async def create_branch(
@@ -100,10 +100,15 @@ async def delete_version(
     if not version.parent_version_id:
         return "root"
     # Refuse if child branches exist
-    child_stmt = select(CvVersion.id).where(CvVersion.parent_version_id == version_id).limit(1)
+    child_stmt = (
+        select(CvVersion.id).where(CvVersion.parent_version_id == version_id).limit(1)
+    )
     child_result = await session.execute(child_stmt)
     if child_result.scalar_one_or_none():
         return "has_children"
+    await session.execute(
+        delete(PublicAsset).where(PublicAsset.version_id == version_id)
+    )
     await session.delete(version)
     await session.commit()
     return True
