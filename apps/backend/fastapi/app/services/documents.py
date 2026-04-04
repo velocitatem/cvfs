@@ -99,6 +99,9 @@ async def delete_document(
         await session.execute(
             delete(PublicAsset).where(PublicAsset.version_id.in_(version_ids))
         )
+    # Null root_version_id to break the circular FK before cascade
+    doc.root_version_id = None
+    await session.flush()
     await session.delete(doc)
     await session.commit()
     for key in artifact_keys:
