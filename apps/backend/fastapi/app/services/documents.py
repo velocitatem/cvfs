@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from dlib.cv import parse_docx_bytes
 
 from app.models import CvDocument, CvVersion, PublicAsset
-from app.services.storage import persist_upload
+from app.services.storage import persist_upload, storage_client
 
 
 async def create_document(
@@ -93,11 +93,14 @@ async def delete_document(
     doc = await get_document(session, owner_id, document_id)
     if not doc:
         return False
-    version_ids = [version.id for version in doc.versions]
+    artifact_keys = {v.artifact_docx_key for v in doc.versions if v.artifact_docx_key}
+    version_ids = [v.id for v in doc.versions]
     if version_ids:
         await session.execute(
             delete(PublicAsset).where(PublicAsset.version_id.in_(version_ids))
         )
     await session.delete(doc)
     await session.commit()
+    for key in artifact_keys:
+        storage_client.delete_object(key=key)
     return True

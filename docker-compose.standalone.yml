@@ -1,8 +1,10 @@
 version: "3.8"
 
+# Standalone deployment — no Traefik/reverse-proxy required.
+# Usage: docker compose -f docker-compose.standalone.yml up -d
+# Configure via a .env file (copy .env.example and fill in values).
+
 networks:
-  dokploy-network:
-    external: true
   cvfs-network:
 
 services:
@@ -12,28 +14,25 @@ services:
       context: ./
       dockerfile: ./docker/webapp.Dockerfile
       args:
-        NEXT_PUBLIC_AUTHENTIK_ISSUER: ${NEXT_PUBLIC_AUTHENTIK_ISSUER}
-        NEXT_PUBLIC_AUTHENTIK_CLIENT_ID: ${NEXT_PUBLIC_AUTHENTIK_CLIENT_ID}
-        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-https://cv.alves.world}
-        API_BASE_URL: ${API_BASE_URL:-http://cvfs-backend:8080}
+        NEXT_PUBLIC_AUTHENTIK_ISSUER: ${NEXT_PUBLIC_AUTHENTIK_ISSUER:-}
+        NEXT_PUBLIC_AUTHENTIK_CLIENT_ID: ${NEXT_PUBLIC_AUTHENTIK_CLIENT_ID:-}
+        NEXT_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+        API_BASE_URL: http://cvfs-backend:8080
     environment:
       - API_BASE_URL=http://cvfs-backend:8080
-      - AUTHENTIK_ISSUER=${AUTHENTIK_ISSUER}
-      - AUTHENTIK_CLIENT_ID=${AUTHENTIK_CLIENT_ID}
-      - AUTHENTIK_CLIENT_SECRET=${AUTHENTIK_CLIENT_SECRET}
-      - NEXT_PUBLIC_AUTHENTIK_ISSUER=${NEXT_PUBLIC_AUTHENTIK_ISSUER}
-      - NEXT_PUBLIC_AUTHENTIK_CLIENT_ID=${NEXT_PUBLIC_AUTHENTIK_CLIENT_ID}
-      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-https://cv.alves.world}
+      - AUTHENTIK_ISSUER=${AUTHENTIK_ISSUER:-}
+      - AUTHENTIK_CLIENT_ID=${AUTHENTIK_CLIENT_ID:-}
+      - AUTHENTIK_CLIENT_SECRET=${AUTHENTIK_CLIENT_SECRET:-}
+      - NEXT_PUBLIC_AUTHENTIK_ISSUER=${NEXT_PUBLIC_AUTHENTIK_ISSUER:-}
+      - NEXT_PUBLIC_AUTHENTIK_CLIENT_ID=${NEXT_PUBLIC_AUTHENTIK_CLIENT_ID:-}
+      - NEXT_PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:3000}
+    ports:
+      - "${WEBAPP_PORT:-3000}:3000"
     networks:
-      - dokploy-network
       - cvfs-network
+    depends_on:
+      - backend
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.cvfs-webapp.rule=Host(`cv.alves.world`)"
-      - "traefik.http.services.cvfs-webapp.loadbalancer.server.port=3000"
-      - "traefik.http.routers.cvfs-webapp.entrypoints=websecure"
-      - "traefik.http.routers.cvfs-webapp.tls.certresolver=letsencrypt"
 
   backend:
     container_name: "cvfs-backend"
@@ -42,36 +41,31 @@ services:
       dockerfile: ./docker/backend-fastapi.Dockerfile
     environment:
       - BACKEND_PORT=8080
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@cvfs-postgres:5432/resume_branches
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@cvfs-postgres:5432/resume_branches
       - MINIO_ENDPOINT=http://cvfs-minio:9000
       - MINIO_BUCKET=${MINIO_BUCKET:-resume-branches}
       - MINIO_REGION=${MINIO_REGION:-us-east-1}
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://cv.alves.world}
-      - CV_PUBLIC_DOMAIN=${CV_PUBLIC_DOMAIN:-cv.alves.world}
-      - CORS_ORIGINS=${CORS_ORIGINS:-https://cv.alves.world}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:3000}
+      - CV_PUBLIC_DOMAIN=${CV_PUBLIC_DOMAIN:-localhost}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       - REDIS_URL=redis://cvfs-redis:6379/0
       - CELERY_BROKER_URL=redis://cvfs-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://cvfs-redis:6379/0
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - AUTH_OIDC_ISSUER=${AUTH_OIDC_ISSUER:-}
       - AUTH_OIDC_AUDIENCE=${AUTH_OIDC_AUDIENCE:-}
-      - AUTH_DISABLE_VERIFICATION=${AUTH_DISABLE_VERIFICATION:-false}
+      - AUTH_DISABLE_VERIFICATION=${AUTH_DISABLE_VERIFICATION:-true}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       - postgres
       - minio
       - redis
     networks:
-      - dokploy-network
       - cvfs-network
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.cvfs-backend.rule=Host(`api.cv.alves.world`)"
-      - "traefik.http.services.cvfs-backend.loadbalancer.server.port=8080"
-      - "traefik.http.routers.cvfs-backend.entrypoints=websecure"
-      - "traefik.http.routers.cvfs-backend.tls.certresolver=letsencrypt"
 
   worker:
     container_name: "cvfs-worker"
@@ -111,7 +105,7 @@ services:
     environment:
       POSTGRES_DB: resume_branches
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -127,6 +121,8 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     networks:
       - cvfs-network
     restart: unless-stopped
@@ -142,8 +138,7 @@ services:
       /bin/sh -c "
       sleep 5;
       mc alias set myminio http://cvfs-minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
-      mc mb myminio/resume-branches --ignore-existing;
-      mc anonymous set public myminio/resume-branches;
+      mc mb myminio/$${MINIO_BUCKET:-resume-branches} --ignore-existing;
       exit 0;
       "
 
