@@ -73,6 +73,12 @@ export type PublicAsset = {
     created_at: string;
 };
 
+export type PublicAssetAnalytics = {
+    slug: string;
+    view_count: number;
+    last_viewed_at?: string | null;
+};
+
 // reads OIDC bearer token from client-readable cookie (set by /api/auth/callback)
 function getAuthHeader(): Record<string, string> {
     if (typeof document === 'undefined') return {};
@@ -177,6 +183,12 @@ export async function publishVersion(
         body: JSON.stringify({ version_id: versionId ?? null, submission_id: submissionId ?? null, slug: slug ?? null }),
     });
 }
+
+export const getPublicPdfUrl = (slug: string): string =>
+    `${API}/api/v1/public/${encodeURIComponent(slug)}/pdf`;
+
+export const fetchPublicAssetAnalytics = (slug: string): Promise<PublicAssetAnalytics> =>
+    req<PublicAssetAnalytics>(`/api/v1/public/${encodeURIComponent(slug)}/analytics`);
 
 export async function deleteDocument(documentId: string): Promise<void> {
     const res = await fetch(`${API}/api/v1/documents/${documentId}`, {

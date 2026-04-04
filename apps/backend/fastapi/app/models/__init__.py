@@ -4,6 +4,7 @@ from .cv import (
     CvPatch,
     CvVersion,
     PublicAsset,
+    PublicAssetView,
     Specialization,
     Submission,
     SubmissionStatus,
@@ -17,5 +18,6 @@ __all__ = [
     "Submission",
     "SubmissionStatus",
     "PublicAsset",
+    "PublicAssetView",
     "AiSuggestion",
 ]
