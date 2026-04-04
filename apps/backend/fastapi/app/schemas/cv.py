@@ -63,6 +63,10 @@ class BranchCreateRequest(BaseModel):
     patches: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class PatchApplyRequest(BaseModel):
+    patches: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class SubmissionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

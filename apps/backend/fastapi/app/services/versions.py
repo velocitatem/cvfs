@@ -84,6 +84,66 @@ async def create_branch(
     return result.scalars().one()
 
 
+async def append_patches_to_version(
+    session: AsyncSession,
+    *,
+    owner_id: str,
+    version_id: str,
+    patches: list[dict],
+) -> CvVersion | None:
+    stmt = (
+        select(CvVersion)
+        .join(CvVersion.document)
+        .where(CvVersion.id == version_id, CvDocument.owner_id == owner_id)
+        .options(selectinload(CvVersion.patches))
+    )
+    result = await session.execute(stmt)
+    version = result.scalars().one_or_none()
+    if not version:
+        return None
+
+    patch_models = [PatchPayload.model_validate(item) for item in patches]
+    if not patch_models:
+        return version
+
+    base_doc = StructuredDocument(
+        version_label=version.version_label,
+        blocks=[
+            StructuredBlock.model_validate(block)
+            for block in version.structured_blocks or []
+        ],
+    )
+    validate_patchset(base_doc, patch_models)
+    updated_doc = apply_patchset(base_doc, patch_models)
+
+    version.structured_blocks = [block.model_dump() for block in updated_doc.blocks]
+    metadata = version.metadata_json or {}
+    metadata["patch_count"] = int(metadata.get("patch_count") or 0) + len(patch_models)
+    version.metadata_json = metadata
+
+    for patch in patch_models:
+        session.add(
+            CvPatch(
+                version_id=version.id,
+                target_path=patch.target_path,
+                operation=patch.operation.value,
+                old_value=patch.old_value,
+                new_value=patch.new_value,
+                metadata_json=patch.metadata,
+            )
+        )
+
+    await session.commit()
+
+    stmt_refresh = (
+        select(CvVersion)
+        .where(CvVersion.id == version_id)
+        .options(selectinload(CvVersion.patches))
+    )
+    result = await session.execute(stmt_refresh)
+    return result.scalars().one()
+
+
 async def delete_version(
     session: AsyncSession, owner_id: str, version_id: str
 ) -> bool | str:

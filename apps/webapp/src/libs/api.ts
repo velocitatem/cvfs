@@ -133,6 +133,17 @@ export async function createBranch(
     });
 }
 
+export async function appendPatches(
+    versionId: string,
+    patches: Record<string, unknown>[],
+): Promise<Version> {
+    return req<Version>(`/api/v1/versions/${versionId}/patches`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ patches }),
+    });
+}
+
 export async function createSubmission(
     versionId: string,
     companyName: string,

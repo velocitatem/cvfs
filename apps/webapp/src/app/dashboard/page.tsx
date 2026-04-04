@@ -5,6 +5,7 @@ import CVTree from '@/components/cv/CVTree';
 import DiffViewer from '@/components/cv/DiffViewer';
 import Link from 'next/link';
 import {
+    appendPatches,
     createBranch, createSubmission, deleteDocument, deleteVersion,
     Document, downloadVersionUrl,
     fetchDocuments, fetchSubmissions, fetchPublicAssetAnalytics, getPublicPdfUrl,
@@ -488,6 +489,8 @@ export default function Dashboard() {
     const [pendingEdits, setPendingEdits] = useState<Map<string, { old_value: string; new_value: string }>>(new Map());
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [docHovered, setDocHovered] = useState<string | null>(null);
+    const [applyLoading, setApplyLoading] = useState(false);
+    const [applyError, setApplyError] = useState('');
 
     useEffect(() => {
         fetchDocuments()
@@ -501,6 +504,8 @@ export default function Dashboard() {
 
     useEffect(() => {
         setPendingEdits(new Map());
+        setApplyError('');
+        setApplyLoading(false);
     }, [selectedVersionId]);
 
     useEffect(() => {
@@ -553,6 +558,21 @@ export default function Dashboard() {
     };
 
     const discardEdits = () => setPendingEdits(new Map());
+
+    const applyStagedEdits = async () => {
+        if (!selectedVersionId || !stagedPatches.length) return;
+        setApplyLoading(true);
+        setApplyError('');
+        try {
+            await appendPatches(selectedVersionId, stagedPatches as Record<string, unknown>[]);
+            await refreshDocs();
+            setPendingEdits(new Map());
+        } catch (e: unknown) {
+            setApplyError(e instanceof Error ? e.message : 'Failed to apply edits');
+        } finally {
+            setApplyLoading(false);
+        }
+    };
 
     const handleDeleteDoc = async (docId: string) => {
         if (!confirm('Delete this CV and all its branches? This cannot be undone.')) return;
@@ -809,13 +829,22 @@ export default function Dashboard() {
                                         <button
                                             className="btn btn-primary"
                                             style={{ fontSize: 12, padding: '3px 10px', background: '#92400e', borderColor: '#92400e' }}
-                                            onClick={() => setModal('branch')}
+                                            onClick={applyStagedEdits}
+                                            disabled={applyLoading}
                                         >
-                                            Save as branch
+                                            {applyLoading ? 'Applying…' : 'Apply to branch'}
+                                        </button>
+                                        <button className="btn btn-ghost" style={{ fontSize: 12, padding: '3px 8px' }} onClick={() => setModal('branch')}>
+                                            Save as new branch
                                         </button>
                                         <button className="btn btn-ghost" style={{ fontSize: 12, padding: '3px 8px' }} onClick={discardEdits}>
                                             Discard
                                         </button>
+                                        {applyError && (
+                                            <span style={{ color: '#b91c1c', fontSize: 12, flexBasis: '100%' }}>
+                                                {applyError}
+                                            </span>
+                                        )}
                                     </div>
                                 )}
 
