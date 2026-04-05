@@ -1,4 +1,5 @@
 const API = "";
+export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO === 'true';
 
 export type StructuredBlock = {
     path: string;
@@ -85,6 +86,21 @@ export type PublicAssetAnalytics = {
     slug: string;
     view_count: number;
     last_viewed_at?: string | null;
+};
+
+export type OperationImpact = { operation: string; total: number; positive: number; rate: number };
+export type KeywordSignal = { keyword: string; positive_count: number; negative_count: number; lift: number };
+export type SectionImpact = { section: string; positive_rate: number; count: number };
+
+export type InsightsResult = {
+    total_submissions: number;
+    positive_count: number;
+    positive_rate: number;
+    operation_impact: OperationImpact[];
+    top_positive_keywords: KeywordSignal[];
+    top_negative_keywords: KeywordSignal[];
+    section_impact: SectionImpact[];
+    has_data: boolean;
 };
 
 // reads OIDC bearer token from client-readable cookie (set by /api/auth/callback)
@@ -237,6 +253,9 @@ export async function deleteDocument(documentId: string): Promise<void> {
         throw new Error(detail || `HTTP ${res.status}`);
     }
 }
+
+export const fetchInsights = (): Promise<InsightsResult> =>
+    req<InsightsResult>('/api/v1/insights');
 
 export async function deleteVersion(versionId: string): Promise<void> {
     const res = await fetch(`${API}/api/v1/versions/${versionId}`, {

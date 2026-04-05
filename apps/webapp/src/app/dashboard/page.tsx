@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import CVTree from '@/components/cv/CVTree';
 import DiffViewer from '@/components/cv/DiffViewer';
+import InsightsPanel from '@/components/cv/InsightsPanel';
 import Link from 'next/link';
 import {
     appendPatches,
     createBranch, createSubmission, deleteDocument, deleteVersion,
     Document, downloadVersionUrl,
-    fetchDocuments, fetchSubmissions, fetchPublicAssetAnalytics, getPublicPdfUrl,
+    fetchDocuments, fetchInsights, fetchSubmissions, fetchPublicAssetAnalytics, getPublicPdfUrl,
+    InsightsResult,
+    IS_DEMO,
     publishVersion, PublicAsset, PublicAssetAnalytics,
     requestAiSuggestions,
     Submission,
@@ -20,6 +23,9 @@ import {
     uploadDocument,
     Version,
 } from '@/libs/api';
+import {
+    DEMO_DOCUMENTS, DEMO_DOC_ID, DEMO_INSIGHTS, DEMO_SUBMISSIONS,
+} from './demo-data';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -548,7 +554,7 @@ function SubmissionsTab({
 // ── main dashboard ────────────────────────────────────────────────────────────
 
 type Modal = 'upload' | 'branch' | 'submission' | 'publish' | null;
-type Tab = 'content' | 'patches' | 'submissions';
+type Tab = 'content' | 'patches' | 'submissions' | 'insights';
 
 export default function Dashboard() {
     const [docs, setDocs] = useState<Document[]>([]);
@@ -568,8 +574,17 @@ export default function Dashboard() {
     const [docHovered, setDocHovered] = useState<string | null>(null);
     const [applyLoading, setApplyLoading] = useState(false);
     const [applyError, setApplyError] = useState('');
+    const [insights, setInsights] = useState<InsightsResult | null>(null);
 
     useEffect(() => {
+        if (IS_DEMO) {
+            setDocs(DEMO_DOCUMENTS);
+            setAllSubmissions(DEMO_SUBMISSIONS);
+            setSelectedDocId(DEMO_DOC_ID);
+            setInsights(DEMO_INSIGHTS);
+            setLoading(false);
+            return;
+        }
         Promise.all([fetchDocuments(), fetchSubmissions().catch(() => [])])
             .then(([d, allSubs]) => {
                 setDocs(d);
@@ -579,6 +594,11 @@ export default function Dashboard() {
             .catch(() => setError('Failed to load documents. Make sure the backend is running.'))
             .finally(() => setLoading(false));
     }, []);
+
+    useEffect(() => {
+        if (IS_DEMO || !selectedDocId) return;
+        fetchInsights().then(setInsights).catch(() => setInsights(null));
+    }, [selectedDocId]);
 
     useEffect(() => {
         setPendingEdits(new Map());
@@ -691,6 +711,7 @@ export default function Dashboard() {
     };
 
     const handleDeleteDoc = async (docId: string) => {
+        if (IS_DEMO) return;
         if (!confirm('Delete this CV and all its branches? This cannot be undone.')) return;
         try {
             await deleteDocument(docId);
@@ -706,6 +727,7 @@ export default function Dashboard() {
     };
 
     const handleDeleteVersion = async (versionId: string) => {
+        if (IS_DEMO) return;
         const hasChildren = selectedDoc?.versions.some(v => v.parent_version_id === versionId);
         const msg = hasChildren
             ? 'Delete this branch and all its sub-branches? This cannot be undone.'
@@ -758,12 +780,21 @@ export default function Dashboard() {
                     </Link>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setModal('upload')}>
-                        + Upload CV
-                    </button>
-                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={logout}>
-                        Sign out
-                    </button>
+                    {IS_DEMO && (
+                        <span style={{ fontSize: 11, padding: '2px 10px', background: '#7c3aed', color: '#fff', borderRadius: 9999, fontWeight: 600, letterSpacing: '0.04em' }}>
+                            DEMO
+                        </span>
+                    )}
+                    {!IS_DEMO && (
+                        <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setModal('upload')}>
+                            + Upload CV
+                        </button>
+                    )}
+                    {!IS_DEMO && (
+                        <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={logout}>
+                            Sign out
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -900,6 +931,13 @@ export default function Dashboard() {
                                             onSelect={selectVersion}
                                         />
                                     </div>
+
+                                    {insights?.has_data && (
+                                        <div style={{ marginTop: 10 }}>
+                                            <div className="label" style={{ marginBottom: 8 }}>NLP insights</div>
+                                            <InsightsPanel data={insights} />
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div style={{ paddingTop: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
@@ -938,10 +976,15 @@ export default function Dashboard() {
 
                                     {/* action buttons */}
                                     <div className="action-buttons">
-                                        <button className="btn btn-ghost" onClick={() => setModal('branch')}>Branch</button>
-                                        <button className="btn btn-ghost" onClick={() => { setModal('submission'); }}>Submit</button>
-                                        <button className="btn btn-ghost" onClick={() => setModal('publish')}>Publish</button>
-                                        {selectedVersion.artifact_docx_key && selectedDoc && (
+                                        {!IS_DEMO && <button className="btn btn-ghost" onClick={() => setModal('branch')}>Branch</button>}
+                                        {!IS_DEMO && <button className="btn btn-ghost" onClick={() => { setModal('submission'); }}>Submit</button>}
+                                        {!IS_DEMO && <button className="btn btn-ghost" onClick={() => setModal('publish')}>Publish</button>}
+                                        {IS_DEMO && (
+                                            <a href="/demo-cv.docx" download="alex-rivera-cv.docx" className="btn btn-ghost">
+                                                ↓ DOCX
+                                            </a>
+                                        )}
+                                        {!IS_DEMO && selectedVersion.artifact_docx_key && selectedDoc && (
                                             <a href={downloadVersionUrl(selectedDoc.id, selectedVersion.id)} download className="btn btn-ghost">
                                                 ↓ DOCX
                                             </a>
@@ -1044,7 +1087,7 @@ export default function Dashboard() {
 
                                 {/* tabs */}
                                 <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
-                                    {(['content', 'patches', 'submissions'] as Tab[]).map(t => (
+                                    {(['content', 'patches', 'submissions', 'insights'] as Tab[]).map(t => (
                                         <button
                                             key={t}
                                             onClick={() => setActiveTab(t)}
@@ -1076,12 +1119,20 @@ export default function Dashboard() {
                                 )}
                                 {activeTab === 'submissions' && (
                                     <SubmissionsTab
-                                        submissions={submissions}
+                                        submissions={IS_DEMO
+                                            ? DEMO_SUBMISSIONS.filter(s => {
+                                                const doc = DEMO_DOCUMENTS.find(d => d.id === selectedDocId);
+                                                return doc?.versions.some(v => v.id === s.version_id);
+                                            })
+                                            : submissions}
                                         loading={subsLoading}
-                                        onNewSubmission={() => setModal('submission')}
-                                        onRefresh={refreshSubs}
+                                        onNewSubmission={() => !IS_DEMO && setModal('submission')}
+                                        onRefresh={() => !IS_DEMO && refreshSubs()}
                                         onStatusChange={handleSubmissionStatusChange}
                                     />
+                                )}
+                                {activeTab === 'insights' && (
+                                    <InsightsPanel data={insights} />
                                 )}
                             </div>
                         </>
