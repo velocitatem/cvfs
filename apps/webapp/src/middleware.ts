@@ -19,6 +19,7 @@ async function verifySession(token: string): Promise<boolean> {
 
 export async function middleware(req: NextRequest) {
     if (!req.nextUrl.pathname.startsWith('/dashboard')) return NextResponse.next();
+    if (process.env.NEXT_PUBLIC_DEMO === 'true') return NextResponse.next();
     const session = req.cookies.get('session')?.value;
     const oidc = req.cookies.get('oidc_token')?.value;
     if (oidc) return NextResponse.next();
