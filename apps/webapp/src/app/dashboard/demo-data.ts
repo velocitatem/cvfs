@@ -1,6 +1,5 @@
 import type { Document, Submission, InsightsResult } from '@/libs/api';
 
-const NOW = new Date().toISOString();
 const D = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString();
 
 const ROOT_VERSION_ID = 'demo-v1';
