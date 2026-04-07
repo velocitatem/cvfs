@@ -105,9 +105,9 @@ flowchart LR
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `API_BASE_URL` | Backend host consumed by the webapp build + runtime. | `http://cvfs-backend:8080` in Docker |
-| `NEXT_PUBLIC_BASE_URL` | Public origin for web routes. | `https://cv.alves.world` |
+| `NEXT_PUBLIC_BASE_URL` | Public origin for web routes. | — |
 | `AUTHENTIK_*` / `AUTH_OIDC_*` | OIDC issuer, audience, and client credentials. | required |
-| `MINIO_ENDPOINT` / `MINIO_BUCKET` | Object storage endpoint + bucket for artifacts. | `https://storage.cv.alves.world` / `resume-branches` |
+| `MINIO_ENDPOINT` / `MINIO_BUCKET` | Object storage endpoint + bucket for artifacts. | — |
 | `REDIS_URL` | Celery broker/result backend. | `redis://cvfs-redis:6379/0` |
 | `DATABASE_URL` | SQLAlchemy DSN for Postgres. | `postgresql+asyncpg://postgres:postgres@cvfs-postgres:5432/resume_branches` |
 | `ANTHROPIC_API_KEY` | Enables AI tailoring jobs. | unset |
@@ -148,7 +148,7 @@ Use `bun x nx affected -t lint,test,build` before PRs to run fine-grained checks
 
 ## Deployment notes
 - **Docker images:** `docker/backend-fastapi.Dockerfile`, `docker/webapp.Dockerfile`, and `docker/worker.Dockerfile` bake env args for Dokploy. The web build now receives `API_BASE_URL` so rewrites point at the deployed backend.
-- **Dokploy:** see `docs/resume-branches/dokploy.md` for the API payload that provisions `cvfs-backend`, `cvfs-webapp`, Redis, Postgres, and MinIO on `cv.alves.world` / `api.cv.alves.world`.
+- **Dokploy:** see `docs/resume-branches/dokploy.md` for the API payload that provisions `cvfs-backend`, `cvfs-webapp`, Redis, Postgres, and MinIO.
 - **Storage:** `make lift.minio` mirrors the production bucket layout. Set `MINIO_ROOT_USER/MINIO_ROOT_PASSWORD` for parity. Public artifacts should only be published via the API to guarantee immutability + audit logging.
 
 ## Limitations & next steps
