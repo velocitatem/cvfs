@@ -13,14 +13,9 @@ def validate_patchset(
     document: StructuredDocument,
     patches: Iterable[PatchPayload],
     *,
-    max_changes: int = 12,
     max_growth_ratio: float = 1.45,
 ) -> None:
     patch_list = list(patches)
-    if len(patch_list) > max_changes:
-        raise PatchValidationError(
-            f"Patchset exceeds max changes ({len(patch_list)} > {max_changes})"
-        )
     block_map = {block.path: block for block in document.blocks}
     for patch in patch_list:
         block = block_map.get(patch.target_path)
