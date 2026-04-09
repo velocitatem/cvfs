@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -148,6 +148,8 @@ class PublicAsset(Base, IdentifierMixin, TimestampMixin):
     expires_at: Mapped[str | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    paperless_document_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    paperless_share_slug: Mapped[str | None] = mapped_column(String(160), nullable=True)
 
     submission: Mapped[Submission | None] = relationship(
         "Submission", back_populates="public_asset"

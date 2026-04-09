@@ -80,6 +80,7 @@ export type PublicAsset = {
     version_id?: string | null;
     submission_id?: string | null;
     created_at: string;
+    paperless_share_url?: string | null;
 };
 
 export type PublicAssetAnalytics = {
@@ -229,11 +230,23 @@ export async function publishVersion(
     versionId?: string | null,
     submissionId?: string | null,
     slug?: string | null,
+    expiresAt?: string | null,
 ): Promise<PublicAsset> {
     return req<PublicAsset>('/api/v1/public/publish', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ version_id: versionId ?? null, submission_id: submissionId ?? null, slug: slug ?? null }),
+        body: JSON.stringify({ version_id: versionId ?? null, submission_id: submissionId ?? null, slug: slug ?? null, expires_at: expiresAt ?? null }),
+    });
+}
+
+export async function createShareLink(
+    slug: string,
+    expirationDate?: string | null,
+): Promise<PublicAsset> {
+    return req<PublicAsset>(`/api/v1/public/${encodeURIComponent(slug)}/share-links`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ expiration_date: expirationDate ?? null }),
     });
 }
 

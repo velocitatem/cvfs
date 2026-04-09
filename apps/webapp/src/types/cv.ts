@@ -64,6 +64,8 @@ export interface PublicAsset {
   isPublic: boolean;
   expiresAt?: string;
   viewCount: number;
+  url?: string | null;
+  paperlessShareUrl?: string | null;
 }
 
 export interface AISuggestion {

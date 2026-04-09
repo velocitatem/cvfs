@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from datetime import datetime, timezone
 
@@ -16,11 +17,13 @@ from app.schemas import (
     PublicAssetLookupResponse,
     PublicAssetResponse,
     PublishRequest,
+    ShareLinkRequest,
 )
 from app.services.publication import publish_version
 from app.services.storage import storage_client
 from dlib.auth import AuthenticatedUser
 from dlib.cv import docx_bytes_to_pdf, generate_patched_docx
+from dlib.integrations.paperless import get_paperless_client
 
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -48,6 +51,18 @@ async def _get_public_asset(session: AsyncSession, slug: str) -> PublicAsset:
     return asset
 
 
+async def _assert_owner(session: AsyncSession, asset: PublicAsset, owner_id: str) -> None:
+    if not asset.version_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    stmt = (
+        select(CvVersion)
+        .join(CvVersion.document)
+        .where(CvVersion.id == asset.version_id, CvDocument.owner_id == owner_id)
+    )
+    if not (await session.execute(stmt)).scalars().one_or_none():
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+
 @router.post("/publish", response_model=PublicAssetResponse)
 async def publish(
     payload: PublishRequest,
@@ -60,9 +75,37 @@ async def publish(
         version_id=payload.version_id,
         submission_id=payload.submission_id,
         slug=payload.slug,
+        expires_at=payload.expires_at,
     )
     if not asset:
         raise HTTPException(status_code=404, detail="Version or submission not found")
+    return _response_from_asset(asset)
+
+
+@router.post("/{slug}/share-links", response_model=PublicAssetResponse)
+async def create_share_link(
+    slug: str,
+    payload: ShareLinkRequest,
+    session: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    asset = await _get_public_asset(session, slug)
+    await _assert_owner(session, asset, user.sub)
+
+    if not asset.paperless_document_id:
+        raise HTTPException(status_code=409, detail="Asset not synced to paperless")
+
+    settings = get_settings()
+    client = get_paperless_client(settings)
+    if not client:
+        raise HTTPException(status_code=503, detail="Paperless integration not enabled")
+
+    _, share_url = await asyncio.to_thread(
+        client.create_share_link, asset.paperless_document_id, payload.expiration_date
+    )
+    asset.paperless_share_slug = share_url.split("/share/")[-1]
+    await session.commit()
+    await session.refresh(asset)
     return _response_from_asset(asset)
 
 
@@ -73,17 +116,7 @@ async def get_analytics(
     user: AuthenticatedUser = Depends(get_current_user),
 ):
     asset = await _get_public_asset(session, slug)
-
-    if asset.version_id:
-        stmt = (
-            select(CvVersion)
-            .join(CvVersion.document)
-            .where(CvVersion.id == asset.version_id, CvDocument.owner_id == user.sub)
-        )
-        if not (await session.execute(stmt)).scalars().one_or_none():
-            raise HTTPException(status_code=403, detail="Not authorized")
-    else:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    await _assert_owner(session, asset, user.sub)
 
     view_count = (
         await session.execute(
@@ -137,7 +170,11 @@ async def get_public_asset(slug: str, request: Request, session: AsyncSession = 
 def _response_from_asset(asset: PublicAsset) -> PublicAssetResponse:
     settings = get_settings()
     base = settings.public_base_url.rstrip("/")
-    url = f"{base}/cv/{asset.slug}"
+    paperless_share_url = (
+        f"{settings.paperless_base_url}/share/{asset.paperless_share_slug}"
+        if settings.paperless_base_url and asset.paperless_share_slug
+        else None
+    )
     return PublicAssetResponse(
         id=asset.id,
         slug=asset.slug,
@@ -146,5 +183,6 @@ def _response_from_asset(asset: PublicAsset) -> PublicAssetResponse:
         created_at=asset.created_at,
         version_id=asset.version_id,
         submission_id=asset.submission_id,
-        url=url,
+        url=f"{base}/cv/{asset.slug}",
+        paperless_share_url=paperless_share_url,
     )

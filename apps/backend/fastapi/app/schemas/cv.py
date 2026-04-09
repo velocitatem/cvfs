@@ -121,6 +121,11 @@ class PublishRequest(BaseModel):
     version_id: str | None = None
     submission_id: str | None = None
     slug: str | None = None
+    expires_at: datetime | None = None
+
+
+class ShareLinkRequest(BaseModel):
+    expiration_date: datetime | None = None
 
 
 class PublicAssetResponse(BaseModel):
@@ -134,6 +139,7 @@ class PublicAssetResponse(BaseModel):
     version_id: str | None = None
     submission_id: str | None = None
     url: str | None = None
+    paperless_share_url: str | None = None
 
 
 class PublicAssetLookupResponse(BaseModel):

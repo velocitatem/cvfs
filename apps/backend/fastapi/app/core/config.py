@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     )
     publish_domain: str = Field(default="cv.alves.world", alias="CV_PUBLIC_DOMAIN")
 
+    paperless_enabled: bool = Field(default=False, alias="PAPERLESS_ENABLED")
+    paperless_base_url: str | None = Field(default=None, alias="PAPERLESS_BASE_URL")
+    paperless_token: str | None = Field(default=None, alias="PAPERLESS_TOKEN")
+    paperless_tag_ids: list[int] = Field(default_factory=list, alias="PAPERLESS_TAG_IDS")
+
     class Config:
         env_file = ".env"
         extra = "ignore"
@@ -67,11 +72,18 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
-    @field_validator("storage_endpoint_url", mode="before")
+    @field_validator("storage_endpoint_url", "paperless_base_url", "paperless_token", mode="before")
     @classmethod
-    def _empty_endpoint_to_none(cls, value):
+    def _empty_str_to_none(cls, value):
         if isinstance(value, str) and not value.strip():
             return None
+        return value
+
+    @field_validator("paperless_tag_ids", mode="before")
+    @classmethod
+    def _parse_tag_ids(cls, value):
+        if isinstance(value, str):
+            return [int(v.strip()) for v in value.split(",") if v.strip()]
         return value
 
 
