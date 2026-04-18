@@ -74,8 +74,14 @@ function UploadModal({ onClose, onDone }: { onClose: () => void; onDone: (doc: D
     const submit = async () => {
         if (!title.trim() || !file) { setError('Title and file required.'); return; }
         setLoading(true); setError('');
-        try { onDone(await uploadDocument(title.trim(), desc.trim() || null, file)); }
-        catch (e: unknown) { setError(e instanceof Error ? e.message : 'Upload failed'); setLoading(false); }
+        try {
+            const doc = await uploadDocument(title.trim(), desc.trim() || null, file);
+            await Promise.resolve(onDone(doc));
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Upload failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -123,8 +129,14 @@ function BranchModal({
     const submit = async () => {
         if (!name.trim()) { setError('Branch name required.'); return; }
         setLoading(true); setError('');
-        try { onDone(await createBranch(version.id, name.trim(), label.trim() || null, patches as Record<string, unknown>[])); }
-        catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed'); setLoading(false); }
+        try {
+            const v = await createBranch(version.id, name.trim(), label.trim() || null, patches as Record<string, unknown>[]);
+            await Promise.resolve(onDone(v));
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -170,8 +182,14 @@ function SubmissionModal({ version, onClose, onDone }: { version: Version; onClo
     const submit = async () => {
         if (!company.trim() || !role.trim()) { setError('Company and role required.'); return; }
         setLoading(true); setError('');
-        try { onDone(await createSubmission(version.id, company.trim(), role.trim(), url.trim() || null, jd.trim() || null)); }
-        catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed'); setLoading(false); }
+        try {
+            const s = await createSubmission(version.id, company.trim(), role.trim(), url.trim() || null, jd.trim() || null);
+            await Promise.resolve(onDone(s));
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -211,8 +229,12 @@ function PublishModal({ version, onClose, onDone }: { version: Version; onClose:
         setLoading(true); setError('');
         try {
             const asset = await publishVersion(version.id, null, slug.trim() || null);
-            onDone(asset);
-        } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed'); setLoading(false); }
+            await Promise.resolve(onDone(asset));
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

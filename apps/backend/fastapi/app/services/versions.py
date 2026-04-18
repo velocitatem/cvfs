@@ -78,7 +78,10 @@ async def create_branch(
     stmt_refresh = (
         select(CvVersion)
         .where(CvVersion.id == new_version.id)
-        .options(selectinload(CvVersion.patches))
+        .options(
+            selectinload(CvVersion.patches),
+            selectinload(CvVersion.public_assets),
+        )
     )
     result = await session.execute(stmt_refresh)
     return result.scalars().one()
@@ -95,7 +98,10 @@ async def append_patches_to_version(
         select(CvVersion)
         .join(CvVersion.document)
         .where(CvVersion.id == version_id, CvDocument.owner_id == owner_id)
-        .options(selectinload(CvVersion.patches))
+        .options(
+            selectinload(CvVersion.patches),
+            selectinload(CvVersion.public_assets),
+        )
     )
     result = await session.execute(stmt)
     version = result.scalars().one_or_none()
@@ -138,7 +144,10 @@ async def append_patches_to_version(
     stmt_refresh = (
         select(CvVersion)
         .where(CvVersion.id == version_id)
-        .options(selectinload(CvVersion.patches))
+        .options(
+            selectinload(CvVersion.patches),
+            selectinload(CvVersion.public_assets),
+        )
     )
     result = await session.execute(stmt_refresh)
     return result.scalars().one()
