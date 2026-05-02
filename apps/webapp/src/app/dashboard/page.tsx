@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import CVTree from '@/components/cv/CVTree';
+import CVTree, { versionToMarkdown } from '@/components/cv/CVTree';
 import DiffViewer from '@/components/cv/DiffViewer';
 import InsightsPanel from '@/components/cv/InsightsPanel';
+import PDFPreview from '@/components/cv/PDFPreview';
 import Link from 'next/link';
 import {
     appendPatches,
@@ -21,6 +22,7 @@ import {
     updateSubmissionStatus,
     updateSuggestion,
     uploadDocument,
+    uploadDocxToBranch,
     Version,
 } from '@/libs/api';
 import {
@@ -576,7 +578,7 @@ function SubmissionsTab({
 // ── main dashboard ────────────────────────────────────────────────────────────
 
 type Modal = 'upload' | 'branch' | 'submission' | 'publish' | null;
-type Tab = 'content' | 'patches' | 'submissions' | 'insights';
+type Tab = 'content' | 'patches' | 'submissions' | 'insights' | 'preview';
 
 export default function Dashboard() {
     const [docs, setDocs] = useState<Document[]>([]);
@@ -597,6 +599,9 @@ export default function Dashboard() {
     const [applyLoading, setApplyLoading] = useState(false);
     const [applyError, setApplyError] = useState('');
     const [insights, setInsights] = useState<InsightsResult | null>(null);
+    const [uploadBranchLoading, setUploadBranchLoading] = useState(false);
+    const [uploadBranchError, setUploadBranchError] = useState('');
+    const uploadBranchRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (IS_DEMO) {
@@ -716,6 +721,40 @@ export default function Dashboard() {
     };
 
     const discardEdits = () => setPendingEdits(new Map());
+
+    const handleUploadToBranch = async (file: File) => {
+        if (!selectedDocId || !selectedVersionId) return;
+        setUploadBranchLoading(true);
+        setUploadBranchError('');
+        try {
+            await uploadDocxToBranch(selectedDocId, selectedVersionId, file);
+            await refreshDocs();
+        } catch (e: unknown) {
+            setUploadBranchError(e instanceof Error ? e.message : 'Upload failed');
+        } finally {
+            setUploadBranchLoading(false);
+        }
+    };
+
+    const handleCopyMarkdown = (versionId: string) => {
+        if (!selectedDoc) return;
+        const versionMap = new Map(selectedDoc.versions.map(v => [v.id, v]));
+        const sections = selectedDoc.versions
+            .filter(v => v.id === versionId || selectedDoc.versions.some(x => x.id === versionId))
+            .map(v => versionToMarkdown(v, v.parent_version_id ? (versionMap.get(v.parent_version_id ?? '')?.branch_name) : undefined));
+        const md = `# ${selectedDoc.title}\n\n${sections.join('\n\n---\n\n')}`;
+        navigator.clipboard.writeText(md).catch(() => {});
+    };
+
+    const handleCopyBranchMarkdown = (versionId: string) => {
+        if (!selectedDoc) return;
+        const version = selectedDoc.versions.find(v => v.id === versionId);
+        if (!version) return;
+        const versionMap = new Map(selectedDoc.versions.map(v => [v.id, v]));
+        const parentName = version.parent_version_id ? versionMap.get(version.parent_version_id)?.branch_name : undefined;
+        const md = `# ${selectedDoc.title}\n\n${versionToMarkdown(version, parentName)}`;
+        navigator.clipboard.writeText(md).catch(() => {});
+    };
 
     const applyStagedEdits = async () => {
         if (!selectedVersionId || !stagedPatches.length) return;
@@ -899,6 +938,7 @@ export default function Dashboard() {
                                         selectedVersionId={selectedVersionId}
                                         onSelect={selectVersion}
                                         onDeleteVersion={handleDeleteVersion}
+                                        onCopyMarkdown={handleCopyBranchMarkdown}
                                     />
                                 </div>
                             )}
@@ -951,6 +991,7 @@ export default function Dashboard() {
                                             versions={selectedDoc.versions}
                                             selectedVersionId={selectedVersionId}
                                             onSelect={selectVersion}
+                                            onCopyMarkdown={handleCopyBranchMarkdown}
                                         />
                                     </div>
 
@@ -1010,6 +1051,29 @@ export default function Dashboard() {
                                             <a href={downloadVersionUrl(selectedDoc.id, selectedVersion.id)} download className="btn btn-ghost">
                                                 ↓ DOCX
                                             </a>
+                                        )}
+                                        {!IS_DEMO && (
+                                            <>
+                                                <button
+                                                    className="btn btn-ghost"
+                                                    onClick={() => uploadBranchRef.current?.click()}
+                                                    disabled={uploadBranchLoading}
+                                                    title="Upload a new DOCX to this branch — diff is computed automatically"
+                                                >
+                                                    {uploadBranchLoading ? 'Uploading…' : '↑ DOCX'}
+                                                </button>
+                                                <input
+                                                    ref={uploadBranchRef}
+                                                    type="file"
+                                                    accept=".docx"
+                                                    style={{ display: 'none' }}
+                                                    onChange={e => {
+                                                        const f = e.target.files?.[0];
+                                                        if (f) handleUploadToBranch(f);
+                                                        e.target.value = '';
+                                                    }}
+                                                />
+                                            </>
                                         )}
                                     </div>
                                 </div>
@@ -1107,9 +1171,20 @@ export default function Dashboard() {
                                     </div>
                                 )}
 
+                                {uploadBranchError && (
+                                    <div style={{
+                                        padding: '6px 12px', background: '#fef2f2', border: '1px solid #fca5a5',
+                                        borderRadius: 5, marginBottom: 12, fontSize: 12, color: '#b91c1c',
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    }}>
+                                        <span>{uploadBranchError}</span>
+                                        <button className="btn btn-ghost" style={{ fontSize: 11, padding: '1px 6px' }} onClick={() => setUploadBranchError('')}>×</button>
+                                    </div>
+                                )}
+
                                 {/* tabs */}
                                 <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
-                                    {(['content', 'patches', 'submissions', 'insights'] as Tab[]).map(t => (
+                                    {(['content', 'patches', 'submissions', 'insights', 'preview'] as Tab[]).map(t => (
                                         <button
                                             key={t}
                                             onClick={() => setActiveTab(t)}
@@ -1128,7 +1203,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* tab content */}
-                            <div style={{ padding: '16px 20px', flex: 1, overflow: 'auto' }}>
+                            <div style={{ padding: activeTab === 'preview' ? 0 : '16px 20px', flex: 1, overflow: activeTab === 'preview' ? 'hidden' : 'auto' }}>
                                 {activeTab === 'content' && (
                                     <ContentTab
                                         blocks={selectedVersion.structured_blocks ?? []}
@@ -1155,6 +1230,11 @@ export default function Dashboard() {
                                 )}
                                 {activeTab === 'insights' && (
                                     <InsightsPanel data={insights} />
+                                )}
+                                {activeTab === 'preview' && selectedDoc && (
+                                    IS_DEMO
+                                        ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-faint)', fontSize: 13 }}>Preview not available in demo mode.</div>
+                                        : <PDFPreview documentId={selectedDoc.id} versionId={selectedVersion.id} />
                                 )}
                             </div>
                         </>

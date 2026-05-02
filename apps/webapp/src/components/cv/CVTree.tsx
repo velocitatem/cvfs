@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { MouseEvent, useState } from 'react';
 import { Version } from '@/libs/api';
 
 type TreeNode = { version: Version; children: TreeNode[] };
@@ -15,20 +15,37 @@ function buildTree(versions: Version[]): TreeNode | null {
     return root;
 }
 
+export function versionToMarkdown(version: Version, parentName?: string): string {
+    const header = `## ${version.version_label || version.branch_name}${parentName ? ` (from ${parentName})` : ''}`;
+    const blocks = (version.structured_blocks ?? []).map(b =>
+        `[${b.path}] ${b.block_type}: ${b.text}`
+    ).join('\n');
+    return `${header}\n\n${blocks || '(no blocks)'}`;
+}
+
 const DOT_COLORS = ['#0a0a0a', '#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
 
-function Node({ node, depth, selectedId, onSelect, onDelete, colorIndex = 0 }: {
+function Node({ node, depth, selectedId, onSelect, onDelete, onCopyMarkdown, colorIndex = 0 }: {
     node: TreeNode; depth: number; selectedId: string | null;
     onSelect: (id: string) => void;
     onDelete?: (id: string) => void;
+    onCopyMarkdown?: (id: string) => void;
     colorIndex?: number;
 }) {
     const [open, setOpen] = useState(true);
     const [hovered, setHovered] = useState(false);
+    const [copied, setCopied] = useState(false);
     const v = node.version;
     const isRoot = !v.parent_version_id;
     const isSelected = v.id === selectedId;
     const dotColor = DOT_COLORS[colorIndex % DOT_COLORS.length];
+
+    const handleCopy = (e: MouseEvent) => {
+        e.stopPropagation();
+        onCopyMarkdown?.(v.id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
 
     return (
         <div style={{ position: 'relative' }}>
@@ -93,6 +110,22 @@ function Node({ node, depth, selectedId, onSelect, onDelete, colorIndex = 0 }: {
                     </span>
                 )}
 
+                {hovered && onCopyMarkdown && (
+                    <button
+                        onClick={handleCopy}
+                        title="Copy Markdown"
+                        aria-label="Copy Markdown"
+                        style={{
+                            width: 18, height: 18, display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', cursor: 'pointer', background: 'none',
+                            border: 'none', padding: 0, color: copied ? '#059669' : 'var(--text-faint)',
+                            flexShrink: 0, borderRadius: 3, fontSize: 11, lineHeight: 1,
+                        }}
+                    >
+                        {copied ? '✓' : '⎘'}
+                    </button>
+                )}
+
                 {!isRoot && onDelete && hovered && (
                     <button
                         onClick={e => { e.stopPropagation(); onDelete(v.id); }}
@@ -124,6 +157,7 @@ function Node({ node, depth, selectedId, onSelect, onDelete, colorIndex = 0 }: {
                             selectedId={selectedId}
                             onSelect={onSelect}
                             onDelete={onDelete}
+                            onCopyMarkdown={onCopyMarkdown}
                             colorIndex={depth === 0 ? i + 1 : colorIndex}
                         />
                     ))}
@@ -133,16 +167,17 @@ function Node({ node, depth, selectedId, onSelect, onDelete, colorIndex = 0 }: {
     );
 }
 
-export default function CVTree({ versions, selectedVersionId, onSelect, onDeleteVersion }: {
+export default function CVTree({ versions, selectedVersionId, onSelect, onDeleteVersion, onCopyMarkdown }: {
     versions: Version[]; selectedVersionId: string | null;
     onSelect: (id: string) => void;
     onDeleteVersion?: (id: string) => void;
+    onCopyMarkdown?: (id: string) => void;
 }) {
     const tree = buildTree(versions);
     if (!tree) return <div style={{ padding: 16, fontSize: 13, color: 'var(--text-faint)' }}>No versions</div>;
     return (
         <div style={{ paddingBottom: 8 }}>
-            <Node node={tree} depth={0} selectedId={selectedVersionId} onSelect={onSelect} onDelete={onDeleteVersion} />
+            <Node node={tree} depth={0} selectedId={selectedVersionId} onSelect={onSelect} onDelete={onDeleteVersion} onCopyMarkdown={onCopyMarkdown} />
         </div>
     );
 }
