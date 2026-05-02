@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.core.config import get_settings
-from app.schemas import DocumentListResponse, DocumentResponse
+from app.schemas import DocumentListResponse, DocumentResponse, VersionResponse
 from app.services.documents import (
     create_document,
     delete_document,
@@ -14,8 +14,9 @@ from app.services.documents import (
     list_documents,
 )
 from app.services.storage import storage_client
+from app.services.versions import upload_docx_to_version
 from dlib.auth import AuthenticatedUser
-from dlib.cv import generate_patched_docx
+from dlib.cv import docx_bytes_to_pdf, generate_patched_docx
 
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -64,6 +65,50 @@ async def download_version_docx(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{slug}"'},
     )
+
+
+@router.get("/{document_id}/versions/{version_id}/preview")
+async def preview_version_pdf(
+    document_id: str,
+    version_id: str,
+    session: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    document = await get_document(session, owner_id=user.sub, document_id=document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    version = next((v for v in document.versions if v.id == version_id), None)
+    if not version or not version.artifact_docx_key:
+        raise HTTPException(status_code=404, detail="Version artifact not found")
+    original = storage_client.download_bytes(key=version.artifact_docx_key)
+    patched = generate_patched_docx(original, version.structured_blocks or [])
+    pdf = docx_bytes_to_pdf(patched)
+    slug = f"{document.title.replace(' ', '-')}-{version.branch_name}"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{slug}.pdf"'},
+    )
+
+
+@router.post("/{document_id}/versions/{version_id}/upload", response_model=VersionResponse)
+async def upload_docx_to_branch(
+    document_id: str,
+    version_id: str,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    document = await get_document(session, owner_id=user.sub, document_id=document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    version = next((v for v in document.versions if v.id == version_id), None)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    updated = await upload_docx_to_version(session, owner_id=user.sub, version_id=version_id, upload=file)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return VersionResponse.model_validate(updated)
 
 
 @router.post("", response_model=DocumentResponse)

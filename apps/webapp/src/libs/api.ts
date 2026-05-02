@@ -144,6 +144,15 @@ export async function uploadDocument(title: string, description: string | null, 
 export const downloadVersionUrl = (documentId: string, versionId: string): string =>
     `${API}/api/v1/documents/${documentId}/versions/${versionId}/download`;
 
+export const previewVersionPdfUrl = (documentId: string, versionId: string): string =>
+    `${API}/api/v1/documents/${documentId}/versions/${versionId}/preview`;
+
+export async function uploadDocxToBranch(documentId: string, versionId: string, file: File): Promise<Version> {
+    const form = new FormData();
+    form.append('file', file);
+    return req<Version>(`/api/v1/documents/${documentId}/versions/${versionId}/upload`, { method: 'POST', body: form });
+}
+
 export async function createBranch(
     parentVersionId: string,
     branchName: string,
